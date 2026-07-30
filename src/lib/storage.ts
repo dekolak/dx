@@ -1,85 +1,112 @@
 import "server-only";
-import { S3Client, DeleteObjectCommand, PutObjectCommand } from "@aws-sdk/client-s3";
-import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import { createWriteStream } from "node:fs";
+import { mkdir, unlink } from "node:fs/promises";
+import { Readable } from "node:stream";
+import type { ReadableStream as NodeWebReadableStream } from "node:stream/web";
+import path from "node:path";
 
-// Stockage média sur OVH Object Storage (API S3-compatible). Même pattern que
-// `pose` : upload direct navigateur -> bucket via URL présignée, la base ne
-// stocke que l'URL publique de l'objet.
-
-const {
-  S3_ENDPOINT,
-  S3_REGION,
-  S3_BUCKET,
-  S3_ACCESS_KEY_ID,
-  S3_SECRET_ACCESS_KEY,
-  S3_PUBLIC_BASE_URL,
-} = process.env;
+// Stockage média sur le DISQUE LOCAL du VPS (monté en volume Docker en prod).
+// L'app écrit les fichiers dans UPLOAD_DIR et les sert elle-même via la route
+// /api/media/[...path]. La base ne stocke que l'URL applicative de l'objet.
+// (Remplace l'ancien stockage OVH S3 — inutile pour un usage perso.)
 
 export const MAX_UPLOAD_BYTES = Number(process.env.MAX_UPLOAD_BYTES ?? 52428800); // 50 Mo
 
-export function storageConfigured(): boolean {
-  return Boolean(S3_ENDPOINT && S3_BUCKET && S3_ACCESS_KEY_ID && S3_SECRET_ACCESS_KEY);
-}
+// En prod : volume Docker (ex. /data/dx-uploads). En dev : dossier local du repo.
+export const UPLOAD_DIR = process.env.UPLOAD_DIR || path.join(process.cwd(), ".uploads");
 
-let _client: S3Client | null = null;
-function client(): S3Client {
-  if (!storageConfigured()) {
-    throw new Error("Stockage OVH non configuré (variables S3_* manquantes).");
-  }
-  if (!_client) {
-    _client = new S3Client({
-      endpoint: S3_ENDPOINT,
-      region: S3_REGION || "gra",
-      credentials: {
-        accessKeyId: S3_ACCESS_KEY_ID!,
-        secretAccessKey: S3_SECRET_ACCESS_KEY!,
-      },
-      forcePathStyle: true, // OVH accepte le path-style, plus robuste
-    });
-  }
-  return _client;
-}
+const MEDIA_URL_PREFIX = "/api/media/";
 
-/** Nettoie un nom de fichier pour un usage sûr dans une clé S3. */
+/** Nettoie un nom de fichier pour un usage sûr dans une clé. */
 function sanitizeFilename(name: string): string {
   return name.replace(/[^a-zA-Z0-9._-]/g, "_").slice(-80) || "file";
 }
 
-export function buildObjectKey(orgId: string, filename: string, rand: string): string {
+export function buildKey(orgId: string, filename: string, rand: string): string {
+  // orgId vient de la session (cuid), rand est aléatoire → pas de traversal.
   return `${orgId}/${rand}-${sanitizeFilename(filename)}`;
 }
 
-export function publicUrlForKey(key: string): string {
-  const base = (S3_PUBLIC_BASE_URL || `${S3_ENDPOINT}/${S3_BUCKET}`).replace(/\/$/, "");
-  return `${base}/${key.split("/").map(encodeURIComponent).join("/")}`;
+/** URL applicative servie par /api/media (stockée en base comme `Media.url`). */
+export function mediaUrlForKey(key: string): string {
+  return MEDIA_URL_PREFIX + key.split("/").map(encodeURIComponent).join("/");
+}
+
+/** Clé de stockage à partir d'une URL /api/media/... (null si non gérée). */
+export function keyFromMediaUrl(url: string): string | null {
+  if (!url.startsWith(MEDIA_URL_PREFIX)) return null;
+  return url
+    .slice(MEDIA_URL_PREFIX.length)
+    .split("/")
+    .map((s) => decodeURIComponent(s))
+    .join("/");
+}
+
+/** Chemin absolu sur disque pour une clé, avec garde anti-traversal. */
+export function absolutePathForKey(key: string): string {
+  const root = path.resolve(UPLOAD_DIR);
+  const abs = path.resolve(root, key);
+  if (abs !== root && !abs.startsWith(root + path.sep)) {
+    throw new Error("Chemin média invalide");
+  }
+  return abs;
+}
+
+const MIME: Record<string, string> = {
+  ".jpg": "image/jpeg",
+  ".jpeg": "image/jpeg",
+  ".png": "image/png",
+  ".webp": "image/webp",
+  ".gif": "image/gif",
+  ".heic": "image/heic",
+  ".avif": "image/avif",
+  ".mp4": "video/mp4",
+  ".m4v": "video/x-m4v",
+  ".mov": "video/quicktime",
+  ".webm": "video/webm",
+};
+
+export function contentTypeForKey(key: string): string {
+  return MIME[path.extname(key).toLowerCase()] || "application/octet-stream";
 }
 
 /**
- * Génère une URL présignée PUT pour un upload direct depuis le navigateur.
- * Retourne aussi l'URL publique finale à enregistrer en base.
+ * Écrit un flux (corps de requête) sur disque, en imposant une taille max.
+ * Lève `Error("TOO_LARGE")` et nettoie le fichier partiel si la limite est
+ * dépassée. Retourne le nombre d'octets écrits.
  */
-export async function presignUpload(params: {
-  key: string;
-  contentType: string;
-}): Promise<{ uploadUrl: string; publicUrl: string }> {
-  const cmd = new PutObjectCommand({
-    Bucket: S3_BUCKET,
-    Key: params.key,
-    ContentType: params.contentType,
-    ACL: "public-read",
-  });
-  const uploadUrl = await getSignedUrl(client(), cmd, { expiresIn: 600 });
-  return { uploadUrl, publicUrl: publicUrlForKey(params.key) };
+export async function saveStream(
+  key: string,
+  webStream: ReadableStream<Uint8Array>,
+  maxBytes: number,
+): Promise<number> {
+  const abs = absolutePathForKey(key);
+  await mkdir(path.dirname(abs), { recursive: true });
+  const out = createWriteStream(abs);
+  let bytes = 0;
+  try {
+    const nodeStream = Readable.fromWeb(webStream as unknown as NodeWebReadableStream<Uint8Array>);
+    for await (const chunk of nodeStream) {
+      bytes += (chunk as Buffer).length;
+      if (bytes > maxBytes) throw new Error("TOO_LARGE");
+      if (!out.write(chunk)) await new Promise<void>((res) => out.once("drain", () => res()));
+    }
+    await new Promise<void>((res, rej) => out.end((err?: Error | null) => (err ? rej(err) : res())));
+  } catch (e) {
+    out.destroy();
+    await unlink(abs).catch(() => {});
+    throw e;
+  }
+  return bytes;
 }
 
-/** Supprime définitivement un objet (purge corbeille). Best-effort. */
-export async function deleteObjectByUrl(url: string): Promise<void> {
-  const base = (S3_PUBLIC_BASE_URL || `${S3_ENDPOINT}/${S3_BUCKET}`).replace(/\/$/, "");
-  if (!url.startsWith(base)) return; // URL externe / inconnue -> on ignore
-  const key = decodeURIComponent(url.slice(base.length + 1));
+/** Supprime le fichier correspondant à une URL média (purge). Best-effort. */
+export async function deleteMediaByUrl(url: string): Promise<void> {
+  const key = keyFromMediaUrl(url);
+  if (!key) return; // URL externe / inconnue
   try {
-    await client().send(new DeleteObjectCommand({ Bucket: S3_BUCKET, Key: key }));
+    await unlink(absolutePathForKey(key));
   } catch {
-    // Best-effort : ne bloque pas la purge si l'objet est déjà absent.
+    // Best-effort : ne bloque pas la purge si le fichier est déjà absent.
   }
 }

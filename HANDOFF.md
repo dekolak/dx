@@ -24,7 +24,7 @@ laser, plasma…) — photos annotées, historique logiciel, notes rapides.
 | ------------ | ------------------------------------------------------------ |
 | Framework    | Next.js 15 (App Router) — front + API routes                 |
 | ORM / DB     | Prisma 6 + PostgreSQL                                         |
-| Stockage média | OVH Object Storage (API S3-compatible), upload direct présigné |
+| Stockage média | Disque local du VPS (volume Docker), servi par l'app via `/api/media` |
 | Déploiement  | Coolify sur le VPS OVH, repo GitHub dédié (`dekolak/dx`)      |
 | PWA          | manifest + service worker (`public/sw.js`), installable mobile |
 | Auth         | email + mot de passe → cookie de session JWT (`jose`)        |
@@ -53,7 +53,7 @@ src/
 ├── lib/
 │   ├── prisma.ts          # singleton PrismaClient
 │   ├── auth.ts            # session JWT, authenticate, requireOrgId
-│   ├── storage.ts         # OVH S3 : presign PUT, URL publique, delete
+│   ├── storage.ts         # disque local : écriture, résolution chemin, delete
 │   ├── api.ts             # wrapper route() + erreurs typées (400/401/404/500)
 │   ├── data.ts            # LECTURES, TOUJOURS scopées organizationId (server components)
 │   ├── mutations.ts       # ÉCRITURES, vérifient l'appartenance org avant de muter
@@ -110,20 +110,29 @@ Voir `prisma/schema.prisma`. Modèles : `Organization`, `User`, `Machine`,
 | `DELETE /api/entries/[id]`     | soft delete                                 |
 | `POST /api/entries/[id]/share` | activer/désactiver partage                  |
 | `POST /api/trash/[kind]/[id]`  | restaurer                                   |
-| `DELETE /api/trash/[kind]/[id]`| purge définitive (+ suppression média OVH)  |
-| `POST /api/upload`             | URL présignée d'upload direct vers OVH      |
+| `DELETE /api/trash/[kind]/[id]`| purge définitive (+ suppression fichier média) |
+| `POST /api/upload`             | upload fichier (corps brut) → disque local  |
+| `GET  /api/media/[...path]`    | sert un média depuis le disque (public, Range) |
 
-## 7. Stockage média (OVH)
+## 7. Stockage média (disque local)
 
-Pattern identique à `pose` : le navigateur demande une URL présignée
-(`POST /api/upload`), puis fait un `PUT` direct vers le bucket. La base ne
-stocke que l'URL publique de l'objet.
+Usage perso → pas de stockage objet externe. Le navigateur POST le fichier en
+corps brut vers `POST /api/upload?filename=…` (streaming, avec limite de taille) ;
+l'app l'écrit dans `UPLOAD_DIR` sous `<orgId>/<rand>-<fichier>`. La base stocke
+l'URL applicative `/api/media/<clé>` (champ `Media.url`).
 
-- Bucket attendu **en lecture publique** (pour que les pages `/s/*` affichent
-  les médias sans auth). L'upload pose `ACL: public-read`.
+- **Service des fichiers** : route **publique** `GET /api/media/[...path]`
+  (nécessaire pour les pages `/s/*` sans auth), avec garde anti-traversal,
+  cache long et support des requêtes **Range** (lecture/seek vidéo). Les clés
+  contiennent un identifiant aléatoire → URLs non devinables.
+- **UPLOAD_DIR** : en prod, volume Docker persistant (ex. `/data/dx-uploads`,
+  cf. `docs/COOLIFY.md` §3) ; en dev, dossier `.uploads` à la racine (gitignoré).
 - Limite de taille : `MAX_UPLOAD_BYTES` (défaut 50 Mo). Images + vidéos.
-- Variables : `S3_ENDPOINT`, `S3_REGION`, `S3_BUCKET`, `S3_ACCESS_KEY_ID`,
-  `S3_SECRET_ACCESS_KEY`, `S3_PUBLIC_BASE_URL`. Voir `.env.example`.
+- **Purge** : `deleteMediaByUrl` supprime le fichier sur disque.
+- ⚠️ Le volume DOIT être persistant, sinon les médias disparaissent au
+  redéploiement. Penser à l'inclure dans les backups VPS.
+- `lib/storage.ts` : `saveStream`, `mediaUrlForKey`/`keyFromMediaUrl`,
+  `absolutePathForKey` (garde traversal), `contentTypeForKey`.
 
 ## 8. Auth
 
@@ -143,8 +152,7 @@ stocke que l'URL publique de l'objet.
 ## 9. Déploiement (Coolify)
 
 > **Guide complet et copier-coller : [`docs/COOLIFY.md`](./docs/COOLIFY.md)**
-> (service Postgres, variables d'env, CORS/lecture publique du bucket, seed).
-> Vérif upload OVH : `node scripts/test-upload.mjs`.
+> (service Postgres, variables d'env, **volume persistant médias**, seed).
 
 - `Dockerfile` multi-stage (node:22-slim, openssl pour Prisma).
 - `docker-entrypoint.sh` : `prisma migrate deploy` puis `next start`.
@@ -190,22 +198,21 @@ sur GitHub ; **déploiement Coolify en cours** (relancé côté Teddy).
 - Historique empilé par point ; « Corriger » vs « Ajouter une info » distincts.
 - Software timeline, Journal (ajout rapide + lien pièce optionnel).
 - Partage public `/s/[shareToken]` (testé sans cookie).
-- Soft delete + corbeille (restaurer / purger, purge = delete média OVH).
-- Upload média présigné OVH (code prêt ; non testé contre un vrai bucket).
+- Soft delete + corbeille (restaurer / purger, purge = suppression fichier disque).
+- **Stockage média sur disque local** : upload (streaming + limite de taille),
+  service via `/api/media` (public, Range), purge, garde anti-traversal —
+  **testé end-to-end** (upload → écriture disque → affichage → Range → purge,
+  + rejets taille/type/traversal).
 - PWA : manifest + service worker + icône SVG.
 - Dockerfile + entrypoint + docker-compose + healthcheck.
-- Doc déploiement `docs/COOLIFY.md` + self-test `scripts/test-upload.mjs`.
+- Doc déploiement `docs/COOLIFY.md` (dont volume persistant médias).
 - Hook `SessionStart` pour les sessions web (voir §10).
 
 **À faire / pistes :**
 
-- **Config Coolify complète** (variables d'env + service Postgres) à saisir dans
-  l'interface Coolify — côté Teddy, guide prêt dans `docs/COOLIFY.md`.
-
-- **Tester l'upload contre un vrai bucket OVH** — flux presign→PUT→URL publique
-  codé mais **non exécuté contre OVH** (en attente des clés OVH côté Teddy).
-  Lancer `node scripts/test-upload.mjs` avec les `S3_*` définies, puis un upload
-  réel dans l'app pour valider le CORS navigateur. Cf. `docs/COOLIFY.md` §3.
+- **Config Coolify complète** (variables d'env + service Postgres + **volume
+  persistant `UPLOAD_DIR`**) à saisir dans l'interface Coolify — côté Teddy,
+  guide prêt dans `docs/COOLIFY.md`.
 - Icônes PNG (192/512) en complément du SVG si un navigateur refuse le SVG à
   l'installation PWA.
 - Compression/redimensionnement média côté client avant upload (perf mobile).

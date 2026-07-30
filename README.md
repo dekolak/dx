@@ -10,8 +10,8 @@ l'atelier.
 
 ## Stack
 
-Next.js 15 (App Router) · Prisma + PostgreSQL · OVH Object Storage (médias) ·
-PWA · déploiement Coolify (VPS OVH).
+Next.js 15 (App Router) · Prisma + PostgreSQL · stockage média sur disque local
+(volume Docker, servi via `/api/media`) · PWA · déploiement Coolify (VPS OVH).
 
 ## Démarrage rapide
 
@@ -23,7 +23,7 @@ npm install
 docker compose up -d
 
 # 3. Config
-cp .env.example .env      # puis éditer (SESSION_SECRET, S3_*, SEED_*)
+cp .env.example .env      # puis éditer (SESSION_SECRET, SEED_*, UPLOAD_DIR)
 
 # 4. Schéma + compte initial
 npm run prisma:migrate    # applique les migrations
@@ -51,7 +51,7 @@ date + partage + soft delete. Deux actions distinctes :
 - Journal : notes libres horodatées, lien optionnel vers une pièce
 - Partage public d'une entrée via `/s/[shareToken]` (sans login)
 - Soft delete + corbeille (restauration / purge définitive)
-- Médias photo + vidéo, upload direct vers OVH Object Storage
+- Médias photo + vidéo, stockés sur le disque local et servis par l'app (`/api/media`)
 - PWA installable, mobile-first
 
 ## Documentation

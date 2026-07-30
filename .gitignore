@@ -28,6 +28,9 @@ yarn-error.log*
 # prisma
 /prisma/*.db
 
+# médias uploadés en local (dev)
+/.uploads
+
 # editor
 .vscode/*
 !.vscode/extensions.json

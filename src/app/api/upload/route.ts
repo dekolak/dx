@@ -1,30 +1,34 @@
 import { randomUUID } from "node:crypto";
-import { route, readJson, ok, BadRequestError } from "@/lib/api";
+import { route, ok, BadRequestError } from "@/lib/api";
 import { requireOrgId } from "@/lib/auth";
-import { presignUpload, buildObjectKey, storageConfigured, MAX_UPLOAD_BYTES } from "@/lib/storage";
+import { buildKey, saveStream, mediaUrlForKey, MAX_UPLOAD_BYTES } from "@/lib/storage";
 
 export const runtime = "nodejs";
 
-// Retourne une URL présignée pour un upload direct navigateur -> OVH.
+// Upload direct navigateur -> disque local du VPS. Le fichier est envoyé en
+// corps brut (streaming), avec le nom en query et le type via Content-Type.
+// Retourne l'URL applicative (/api/media/...) à enregistrer en base.
 export const POST = route(async (req) => {
   const organizationId = await requireOrgId();
-  if (!storageConfigured()) throw new BadRequestError("Stockage média non configuré sur ce serveur");
 
-  const { filename, contentType, size } = await readJson<{
-    filename?: string;
-    contentType?: string;
-    size?: number;
-  }>(req);
-
-  if (!filename || !contentType) throw new BadRequestError("filename et contentType requis");
-  if (typeof size === "number" && size > MAX_UPLOAD_BYTES) {
-    throw new BadRequestError(`Fichier trop volumineux (max ${Math.round(MAX_UPLOAD_BYTES / 1024 / 1024)} Mo)`);
-  }
+  const filename = new URL(req.url).searchParams.get("filename") || "file";
+  const contentType = req.headers.get("content-type") || "";
   const isImage = contentType.startsWith("image/");
   const isVideo = contentType.startsWith("video/");
   if (!isImage && !isVideo) throw new BadRequestError("Seuls les images et vidéos sont acceptées");
 
-  const key = buildObjectKey(organizationId, filename, randomUUID().slice(0, 8));
-  const { uploadUrl, publicUrl } = await presignUpload({ key, contentType });
-  return ok({ uploadUrl, publicUrl, mediaType: isVideo ? "video" : "photo" });
+  const declared = Number(req.headers.get("content-length") || 0);
+  const tooBigMsg = `Fichier trop volumineux (max ${Math.round(MAX_UPLOAD_BYTES / 1024 / 1024)} Mo)`;
+  if (declared && declared > MAX_UPLOAD_BYTES) throw new BadRequestError(tooBigMsg);
+  if (!req.body) throw new BadRequestError("Corps de requête vide");
+
+  const key = buildKey(organizationId, filename, randomUUID().slice(0, 8));
+  try {
+    await saveStream(key, req.body, MAX_UPLOAD_BYTES);
+  } catch (e) {
+    if (e instanceof Error && e.message === "TOO_LARGE") throw new BadRequestError(tooBigMsg);
+    throw e;
+  }
+
+  return ok({ url: mediaUrlForKey(key), type: isVideo ? "video" : "photo" }, { status: 201 });
 });

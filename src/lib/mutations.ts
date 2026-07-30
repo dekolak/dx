@@ -3,7 +3,7 @@ import { randomUUID } from "node:crypto";
 import { prisma } from "@/lib/prisma";
 import { requireOrgId } from "@/lib/auth";
 import { BadRequestError, NotFoundError } from "@/lib/api";
-import { deleteObjectByUrl } from "@/lib/storage";
+import { deleteMediaByUrl } from "@/lib/storage";
 
 // Couche d'écriture. Chaque fonction (re)vérifie que la ressource appartient à
 // l'org courante AVANT de muter. Aucun handler ne doit écrire hors de ces
@@ -298,7 +298,7 @@ export async function purge(kind: Kind, id: string) {
             : { entry: { point: { piece: { machineId: id } } } }; // machine (best-effort)
 
   const media = await prisma.media.findMany({ where: mediaWhere, select: { url: true } });
-  await Promise.allSettled(media.map((m) => deleteObjectByUrl(m.url)));
+  await Promise.allSettled(media.map((m) => deleteMediaByUrl(m.url)));
 
   // Les cascades Prisma (onDelete: Cascade) nettoient les enfants.
   return modelByKind[kind]().delete({ where: { id } });

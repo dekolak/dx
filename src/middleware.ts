@@ -8,7 +8,7 @@ import { jwtVerify } from "jose";
 
 const COOKIE_NAME = "dx_session";
 
-const PUBLIC_PREFIXES = ["/login", "/s/", "/api/auth/", "/api/health", "/manifest.webmanifest", "/sw.js", "/icons/"];
+const PUBLIC_PREFIXES = ["/login", "/s/", "/api/auth/", "/api/health", "/api/media/", "/manifest.webmanifest", "/sw.js", "/icons/"];
 
 function isPublic(pathname: string): boolean {
   if (pathname === "/") return false;

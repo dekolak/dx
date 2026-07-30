@@ -4,12 +4,8 @@ const nextConfig = {
   // NB : pas de `output: "standalone"`. L'image Docker garde des node_modules
   // complets (pour disposer du CLI Prisma au `migrate deploy` du démarrage) et
   // lance `next start` — les deux sont incompatibles avec le mode standalone.
-  images: {
-    // Media is served from OVH Object Storage (S3-compatible). The exact host is
-    // configured per environment, so we allow any https remote pattern and rely on
-    // the storage bucket policy for real access control.
-    remotePatterns: [{ protocol: "https", hostname: "**" }],
-  },
+  // Les médias sont servis en local (/api/media, même origine) → pas besoin de
+  // `images.remotePatterns` (on utilise de simples <img>, pas next/image).
   async headers() {
     return [
       {
