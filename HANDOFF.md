@@ -69,7 +69,9 @@ src/
 │   ├── login/page.tsx     # hors groupe (app), public
 │   ├── s/[shareToken]/     # page publique de partage, sans login
 │   └── api/…              # route handlers (voir §6)
-└── components/            # Entry, EntryComposer, PhotoAnnotator, Add*, etc.
+└── components/            # EntryCard, EntryComposer, EntryGallery,
+                           # EntryDetailModal, CollapsiblePoint, PhotoAnnotator,
+                           # Add*, etc.
 ```
 
 **Invariant multi-tenant à ne jamais casser :** aucune lecture/écriture ne
@@ -196,6 +198,11 @@ sur GitHub ; **déploiement Coolify en cours** (relancé côté Teddy).
 - CRUD Machines / Pièces / Points / Software / Entries.
 - Photo annotée avec placement de points (coords relatives) + points libres.
 - Historique empilé par point ; « Corriger » vs « Ajouter une info » distincts.
+- **Vue pièce compacte (mobile)** : points **repliables** (repliés par défaut :
+  vignette + n° + titre court + compteurs ; dépliage au clic ; auto-ouverture
+  via l'ancre `#point-<id>`), et **galerie de vignettes** par point — clic sur
+  une vignette → modale de détail complet (réutilise `EntryCard`). Vérifié au
+  viewport mobile (galerie, modale, pas de débordement horizontal).
 - Software timeline, Journal (ajout rapide + lien pièce optionnel).
 - Partage public `/s/[shareToken]` (testé sans cookie).
 - Soft delete + corbeille (restaurer / purger, purge = suppression fichier disque).

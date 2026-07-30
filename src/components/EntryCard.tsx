@@ -24,7 +24,16 @@ function fmt(d: string | Date) {
 // Deux actions d'édition CLAIREMENT distinctes :
 //   - « Corriger » : édite en place cette entrée (coquille).
 //   - « Ajouter une info » : géré ailleurs (EntryComposer) = nouvelle entrée empilée.
-export function EntryCard({ entry, editable = true }: { entry: EntryData; editable?: boolean }) {
+export function EntryCard({
+  entry,
+  editable = true,
+  onDeleted,
+}: {
+  entry: EntryData;
+  editable?: boolean;
+  // Appelé après une suppression réussie (permet ex. de fermer une modale).
+  onDeleted?: () => void;
+}) {
   const router = useRouter();
   const [editing, setEditing] = useState(false);
   const [text, setText] = useState(entry.text);
@@ -78,6 +87,7 @@ export function EntryCard({ entry, editable = true }: { entry: EntryData; editab
     setBusy(true);
     try {
       await api.deleteEntry(entry.id);
+      onDeleted?.();
       router.refresh();
     } catch (e) {
       flash(e instanceof Error ? e.message : "Erreur");

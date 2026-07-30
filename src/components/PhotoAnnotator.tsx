@@ -42,8 +42,7 @@ export function PhotoAnnotator({
     try {
       const pt = await api.createPoint({ pieceId, x, y });
       setPlacing(false);
-      router.refresh();
-      setTimeout(() => document.getElementById(`point-${(pt as { id: string }).id}`)?.scrollIntoView({ behavior: "smooth" }), 200);
+      openNewPoint((pt as { id: string }).id);
     } finally {
       setBusy(false);
     }
@@ -53,11 +52,17 @@ export function PhotoAnnotator({
     setBusy(true);
     try {
       const pt = await api.createPoint({ pieceId });
-      router.refresh();
-      setTimeout(() => document.getElementById(`point-${(pt as { id: string }).id}`)?.scrollIntoView({ behavior: "smooth" }), 200);
+      openNewPoint((pt as { id: string }).id);
     } finally {
       setBusy(false);
     }
+  }
+
+  // Cible l'ancre du nouveau point : le composant CollapsiblePoint écoute le
+  // hash et se déplie + scrolle automatiquement dessus.
+  function openNewPoint(id: string) {
+    router.refresh();
+    window.location.hash = `point-${id}`;
   }
 
   const placed = points.filter((p) => p.x != null && p.y != null);
