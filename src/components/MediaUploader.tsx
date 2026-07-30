@@ -2,6 +2,7 @@
 import { useRef, useState } from "react";
 import { uploadFile, type Media } from "@/lib/client";
 import { CropModal } from "@/components/CropModal";
+import { ImageLightbox } from "@/components/ImageLightbox";
 
 // Sélecteur + uploader de médias pour les ENTRÉES. Les photos passent par
 // l'éditeur de recadrage (crop + redimensionnement + compression JPEG) avant
@@ -18,6 +19,7 @@ export function MediaUploader({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [cropFile, setCropFile] = useState<File | null>(null);
+  const [zoomSrc, setZoomSrc] = useState<string | null>(null);
   const resolverRef = useRef<((f: File | null) => void) | null>(null);
 
   // Ouvre l'éditeur de recadrage et attend le fichier traité (ou null si annulé).
@@ -74,15 +76,21 @@ export function MediaUploader({
         onChange={(e) => handleFiles(e.target.files)}
       />
       {media.length > 0 && (
-        <div className="entry media" style={{ marginTop: 8, marginBottom: 8 }}>
+        <div className="media-thumbs">
           {media.map((m, i) => (
-            <div key={i} style={{ position: "relative" }}>
-              {m.type === "video" ? <video src={m.url} muted /> : <img src={m.url} alt="" />}
+            <div key={i} className="media-thumb">
+              {m.type === "video" ? (
+                <video src={m.url} muted playsInline />
+              ) : (
+                <button type="button" className="media-thumb-btn" onClick={() => setZoomSrc(m.url)} aria-label="Agrandir">
+                  <img src={m.url} alt="" />
+                </button>
+              )}
               <button
                 type="button"
-                className="btn sm danger"
-                style={{ position: "absolute", top: 4, right: 4, minHeight: 28, padding: "2px 8px" }}
+                className="media-thumb-remove"
                 onClick={() => onChange(media.filter((_, j) => j !== i))}
+                aria-label="Retirer"
               >
                 ✕
               </button>
@@ -98,6 +106,7 @@ export function MediaUploader({
       {error && <p className="hint" style={{ color: "var(--danger)" }}>{error}</p>}
 
       {cropFile && <CropModal file={cropFile} onDone={(f) => finishCrop(f)} onCancel={() => finishCrop(null)} />}
+      {zoomSrc && <ImageLightbox src={zoomSrc} onClose={() => setZoomSrc(null)} />}
     </div>
   );
 }

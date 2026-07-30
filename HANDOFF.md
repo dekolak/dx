@@ -209,6 +209,12 @@ sur GitHub ; **déploiement Coolify en cours** (relancé côté Teddy).
   via l'ancre `#point-<id>`), et **galerie de vignettes** par point — clic sur
   une vignette → modale de détail complet (réutilise `EntryCard`). Vérifié au
   viewport mobile (galerie, modale, pas de débordement horizontal).
+- **Visionneuse photo (lightbox) pinch-to-zoom** (`ImageLightbox`) : cliquer une
+  photo (aperçu du composer `MediaUploader`, ou média d'une entrée dans
+  `EntryCard`) ouvre l'image en plein écran, zoomable (même moteur de gestes que
+  la photo annotée). Corrige aussi l'aperçu du composer qui s'affichait en pleine
+  taille (les vignettes font 74px, classe `.media-thumbs`). Vérifié mobile avec
+  une photo 12 Mpx (vignette, lightbox contain, pinch 1→4.3×, fermeture).
 - **Machine : champs** marque / modèle / réf. machine / réf. client (`MachineEditForm`,
   fiche éditable) + **statut `active`** (`MachineActiveToggle`). La vue principale
   (`/`) n'affiche que les machines actives ; les autres via `/machines`
