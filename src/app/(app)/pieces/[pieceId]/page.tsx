@@ -2,8 +2,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getPiece } from "@/lib/data";
 import { PhotoAnnotator } from "@/components/PhotoAnnotator";
-import { EntryCard, type EntryData } from "@/components/EntryCard";
-import { EntryComposer } from "@/components/EntryComposer";
+import type { EntryData } from "@/components/EntryCard";
+import { CollapsiblePoint } from "@/components/CollapsiblePoint";
 import { DeleteButton } from "@/components/DeleteButton";
 
 export const dynamic = "force-dynamic";
@@ -40,27 +40,11 @@ export default async function PiecePage({ params }: { params: Promise<{ pieceId:
 
       <div className="grid">
         {piece.points.map((point) => (
-          <section key={point.id} id={`point-${point.id}`} className="card">
-            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-              <span className="pill" style={{ background: "var(--accent)", color: "#fff" }}>
-                Point {point.num}
-              </span>
-              {point.x == null && <span className="pill">libre / virtuel</span>}
-              <span style={{ flex: 1 }} />
-              <DeleteButton kind="point" id={point.id} label="🗑️" confirmText="Supprimer ce point (et son historique) ?" />
-            </div>
-
-            <div className="grid" style={{ gap: 8 }}>
-              {point.entries.length === 0 && <p className="hint">Aucune info pour ce point.</p>}
-              {point.entries.map((e) => (
-                <EntryCard key={e.id} entry={e as unknown as EntryData} />
-              ))}
-            </div>
-
-            <div style={{ marginTop: 10 }}>
-              <EntryComposer type="point" pointId={point.id} compact submitLabel="Ajouter une info" />
-            </div>
-          </section>
+          <CollapsiblePoint
+            key={point.id}
+            point={{ id: point.id, num: point.num, x: point.x, y: point.y }}
+            entries={point.entries as unknown as EntryData[]}
+          />
         ))}
       </div>
 
