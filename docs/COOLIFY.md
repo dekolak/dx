@@ -60,6 +60,10 @@ DATABASE_URL=postgresql://<user>:<password>@<service-name>:5432/<db>
 # Session — générer une valeur longue : openssl rand -base64 48
 SESSION_SECRET=<valeur-aléatoire-longue>
 
+# ⚠️ TEMPORAIRE : décommenter pour se connecter en HTTP (cookie sans Secure),
+# le temps de régler le HTTPS/Traefik. À RETIRER dès que le HTTPS est en place.
+# COOKIE_SECURE=false
+
 # Compte initial (créé par le seed, cf. §4). Change le mot de passe !
 SEED_ORG_NAME=DTS Conception
 SEED_USER_EMAIL=teddy@dekolak.fr
