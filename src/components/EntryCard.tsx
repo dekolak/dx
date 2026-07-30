@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { api, type Media } from "@/lib/client";
 import { MediaUploader } from "@/components/MediaUploader";
+import { ImageLightbox } from "@/components/ImageLightbox";
 
 export type EntryData = {
   id: string;
@@ -40,6 +41,7 @@ export function EntryCard({
   const [media, setMedia] = useState<Media[]>(entry.media.map((m) => ({ url: m.url, type: m.type as "photo" | "video" })));
   const [busy, setBusy] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+  const [zoomSrc, setZoomSrc] = useState<string | null>(null);
 
   function flash(msg: string) {
     setToast(msg);
@@ -132,9 +134,9 @@ export function EntryCard({
             m.type === "video" ? (
               <video key={m.id} src={m.url} controls playsInline />
             ) : (
-              <a key={m.id} href={m.url} target="_blank" rel="noreferrer">
+              <button key={m.id} type="button" className="media-open" onClick={() => setZoomSrc(m.url)} aria-label="Agrandir">
                 <img src={m.url} alt="" />
-              </a>
+              </button>
             ),
           )}
         </div>
@@ -154,6 +156,7 @@ export function EntryCard({
         </div>
       )}
       {toast && <div className="toast">{toast}</div>}
+      {zoomSrc && <ImageLightbox src={zoomSrc} onClose={() => setZoomSrc(null)} />}
     </div>
   );
 }
