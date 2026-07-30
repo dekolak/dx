@@ -37,12 +37,14 @@ export default async function MachinesPage() {
         ))}
       </div>
 
-      {counts.inactive > 0 && (
+      {counts.active + counts.inactive > 0 && (
         <div style={{ marginTop: 12 }}>
           <Link href="/machines" className="tile">
             <div style={{ fontWeight: 600 }}>Toutes les machines</div>
             <span className="sub" style={{ marginLeft: "auto" }}>
-              {counts.active + counts.inactive} dont {counts.inactive} hors vue
+              {counts.inactive > 0
+                ? `${counts.active + counts.inactive} dont ${counts.inactive} hors vue`
+                : `${counts.active + counts.inactive} au total`}
             </span>
             <span className="chev">›</span>
           </Link>
