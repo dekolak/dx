@@ -100,6 +100,17 @@ export async function saveStream(
   return bytes;
 }
 
+/** Chemin disque local d'une URL /api/media/... (null si externe/inconnue). */
+export function localPathForMediaUrl(url: string): string | null {
+  const key = keyFromMediaUrl(url);
+  if (!key) return null;
+  try {
+    return absolutePathForKey(key);
+  } catch {
+    return null;
+  }
+}
+
 /** Supprime le fichier correspondant à une URL média (purge). Best-effort. */
 export async function deleteMediaByUrl(url: string): Promise<void> {
   const key = keyFromMediaUrl(url);

@@ -24,6 +24,9 @@ export default async function PiecePage({ params }: { params: Promise<{ pieceId:
       </div>
       <div className="topbar">
         <h1>{piece.name}</h1>
+        <a className="btn ghost sm" href={`/api/pieces/${piece.id}/pdf`} target="_blank" rel="noreferrer">
+          ⬇ PDF
+        </a>
       </div>
       {piece.category && <div className="crumbs">{piece.category}</div>}
 
