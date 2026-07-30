@@ -212,9 +212,12 @@ sur GitHub ; **déploiement Coolify en cours** (relancé côté Teddy).
 
 ## 12. Gotchas
 
-- `output: "standalone"` est activé dans `next.config.mjs` mais le Dockerfile
-  utilise `next start` classique (node_modules complets) pour garder le CLI
-  Prisma pour les migrations. Cohérent, juste bon à savoir.
+- **Pas de `output: "standalone"`** dans `next.config.mjs` : l'archi repose sur
+  des node_modules complets + `next start` (pour garder le CLI Prisma au
+  `migrate deploy` du démarrage). `next start` est **incompatible** avec le mode
+  standalone (sinon 404 sur toutes les pages). Ne pas réactiver standalone sans
+  aussi basculer l'entrypoint sur `node .next/standalone/server.js` ET régler la
+  présence du CLI Prisma pour les migrations.
 - Pages de données en `export const dynamic = "force-dynamic"` (pas de
   prerender au build → pas besoin de DB au build).
 - Le service worker n'intercepte JAMAIS `/api/*` ni les navigations (réseau
