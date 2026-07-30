@@ -24,9 +24,26 @@ async function assertPiece(orgId: string, pieceId: string) {
 }
 
 async function assertPoint(orgId: string, pointId: string) {
-  const p = await prisma.point.findFirst({ where: { id: pointId, piece: { installation: { organizationId: orgId } } } });
+  // Un point appartient soit à une Pièce, soit à une photo d'ensemble.
+  const p = await prisma.point.findFirst({
+    where: {
+      id: pointId,
+      OR: [
+        { piece: { installation: { organizationId: orgId } } },
+        { photoEnsemble: { installation: { organizationId: orgId } } },
+      ],
+    },
+  });
   if (!p) throw new NotFoundError("Point introuvable");
   return p;
+}
+
+async function assertPhotoEnsemble(orgId: string, photoEnsembleId: string) {
+  const pe = await prisma.photoEnsemble.findFirst({
+    where: { id: photoEnsembleId, installation: { organizationId: orgId } },
+  });
+  if (!pe) throw new NotFoundError("Photo d'ensemble introuvable");
+  return pe;
 }
 
 async function assertSoftware(orgId: string, softwareItemId: string) {
@@ -133,16 +150,43 @@ export async function updatePiece(id: string, input: { name?: unknown; category?
 
 // --- Points -----------------------------------------------------------------
 
-export async function createPoint(input: { pieceId?: unknown; x?: unknown; y?: unknown }) {
+// Un point a EXACTEMENT un parent : une Pièce (pieceId) ou une photo d'ensemble
+// (photoEnsembleId). Sur une photo d'ensemble, il peut être un raccourci vers
+// une Pièce (targetPieceId).
+export async function createPoint(input: {
+  pieceId?: unknown;
+  photoEnsembleId?: unknown;
+  targetPieceId?: unknown;
+  x?: unknown;
+  y?: unknown;
+}) {
   const organizationId = await requireOrgId();
-  const pieceId = nonEmpty(input.pieceId, "pieceId");
-  await assertPiece(organizationId, pieceId);
-  // Numérotation continue par pièce (points soft-deleted inclus pour éviter les collisions visuelles).
-  const max = await prisma.point.aggregate({ where: { pieceId }, _max: { num: true } });
-  const num = (max._max.num ?? 0) + 1;
+  const hasPiece = typeof input.pieceId === "string" && input.pieceId.trim();
+  const hasOverview = typeof input.photoEnsembleId === "string" && input.photoEnsembleId.trim();
+  if (hasPiece === hasOverview) {
+    throw new BadRequestError("Fournir exactement un parent (pieceId OU photoEnsembleId)");
+  }
+
   const x = typeof input.x === "number" ? input.x : null;
   const y = typeof input.y === "number" ? input.y : null;
-  return prisma.point.create({ data: { pieceId, num, x, y } });
+
+  if (hasPiece) {
+    const pieceId = String(input.pieceId).trim();
+    await assertPiece(organizationId, pieceId);
+    const max = await prisma.point.aggregate({ where: { pieceId }, _max: { num: true } });
+    return prisma.point.create({ data: { pieceId, num: (max._max.num ?? 0) + 1, x, y } });
+  }
+
+  // Point sur une photo d'ensemble.
+  const photoEnsembleId = String(input.photoEnsembleId).trim();
+  await assertPhotoEnsemble(organizationId, photoEnsembleId);
+  let targetPieceId: string | null = null;
+  if (typeof input.targetPieceId === "string" && input.targetPieceId.trim()) {
+    targetPieceId = input.targetPieceId.trim();
+    await assertPiece(organizationId, targetPieceId); // le raccourci pointe vers une pièce de l'org
+  }
+  const max = await prisma.point.aggregate({ where: { photoEnsembleId }, _max: { num: true } });
+  return prisma.point.create({ data: { photoEnsembleId, targetPieceId, num: (max._max.num ?? 0) + 1, x, y } });
 }
 
 export async function updatePoint(id: string, input: { x?: unknown; y?: unknown; num?: unknown }) {
@@ -165,6 +209,23 @@ export async function createSoftwareItem(input: { installationId?: unknown; name
   const installationId = nonEmpty(input.installationId, "installationId");
   await assertInstallation(organizationId, installationId);
   return prisma.softwareItem.create({ data: { installationId, name: nonEmpty(input.name, "name") } });
+}
+
+// --- Photos d'ensemble ------------------------------------------------------
+
+export async function createPhotoEnsemble(input: { installationId?: unknown; url?: unknown; label?: unknown }) {
+  const organizationId = await requireOrgId();
+  const installationId = nonEmpty(input.installationId, "installationId");
+  await assertInstallation(organizationId, installationId);
+  const max = await prisma.photoEnsemble.aggregate({ where: { installationId }, _max: { sortOrder: true } });
+  return prisma.photoEnsemble.create({
+    data: {
+      installationId,
+      url: nonEmpty(input.url, "url"),
+      label: optStr(input.label),
+      sortOrder: (max._max.sortOrder ?? 0) + 1,
+    },
+  });
 }
 
 // --- Entrées (le bloc central) ----------------------------------------------
@@ -266,7 +327,7 @@ export async function setEntryShareable(id: string, shareable: boolean) {
 
 // --- Soft delete / restore / purge ------------------------------------------
 
-type Kind = "installation" | "piece" | "point" | "software" | "entry";
+type Kind = "installation" | "piece" | "point" | "software" | "entry" | "photoEnsemble";
 
 const assertByKind: Record<Kind, (org: string, id: string) => Promise<unknown>> = {
   installation: assertInstallation,
@@ -274,6 +335,7 @@ const assertByKind: Record<Kind, (org: string, id: string) => Promise<unknown>> 
   point: assertPoint,
   software: assertSoftware,
   entry: assertEntry,
+  photoEnsemble: assertPhotoEnsemble,
 };
 
 // Délégué dynamique : tous ces modèles exposent `deletedAt` + update/delete.
@@ -289,6 +351,7 @@ const modelByKind: Record<Kind, () => SoftDeletable> = {
   point: () => prisma.point as unknown as SoftDeletable,
   software: () => prisma.softwareItem as unknown as SoftDeletable,
   entry: () => prisma.entry as unknown as SoftDeletable,
+  photoEnsemble: () => prisma.photoEnsemble as unknown as SoftDeletable,
 };
 
 export async function softDelete(kind: Kind, id: string) {
@@ -316,12 +379,19 @@ export async function purge(kind: Kind, id: string) {
         ? { entry: { pointId: id } }
         : kind === "software"
           ? { entry: { softwareItemId: id } }
-          : kind === "piece"
-            ? { entry: { OR: [{ point: { pieceId: id } }, { linkedPieceId: id }] } }
-            : { entry: { point: { piece: { installationId: id } } } }; // installation (best-effort)
+          : kind === "photoEnsemble"
+            ? { entry: { point: { photoEnsembleId: id } } }
+            : kind === "piece"
+              ? { entry: { OR: [{ point: { pieceId: id } }, { linkedPieceId: id }] } }
+              : { entry: { point: { piece: { installationId: id } } } }; // installation (best-effort)
 
   const media = await prisma.media.findMany({ where: mediaWhere, select: { url: true } });
-  await Promise.allSettled(media.map((m) => deleteMediaByUrl(m.url)));
+  const extraFiles: string[] = [];
+  if (kind === "photoEnsemble") {
+    const pe = await prisma.photoEnsemble.findUnique({ where: { id }, select: { url: true } });
+    if (pe?.url) extraFiles.push(pe.url); // le fichier de la photo d'ensemble lui-même
+  }
+  await Promise.allSettled([...media.map((m) => m.url), ...extraFiles].map((u) => deleteMediaByUrl(u)));
 
   // Les cascades Prisma (onDelete: Cascade) nettoient les enfants.
   return modelByKind[kind]().delete({ where: { id } });

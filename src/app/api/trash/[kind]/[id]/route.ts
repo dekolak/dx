@@ -3,7 +3,7 @@ import { restore, purge } from "@/lib/mutations";
 
 export const runtime = "nodejs";
 
-const KINDS = ["installation", "piece", "point", "software", "entry"] as const;
+const KINDS = ["installation", "piece", "point", "software", "entry", "photoEnsemble"] as const;
 type Kind = (typeof KINDS)[number];
 
 function parseKind(raw: string): Kind {

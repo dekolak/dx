@@ -38,6 +38,20 @@ export async function getInstallation(installationId: string) {
     include: {
       pieces: { where: { deletedAt: null }, orderBy: { name: "asc" } },
       softwareItems: { where: { deletedAt: null }, orderBy: { createdAt: "desc" } },
+      photosEnsemble: {
+        where: { deletedAt: null },
+        orderBy: { sortOrder: "asc" },
+        include: {
+          points: {
+            where: { deletedAt: null },
+            orderBy: { num: "asc" },
+            include: {
+              targetPiece: { select: { id: true, name: true, deletedAt: true } },
+              entries: { where: { deletedAt: null }, orderBy: { createdAt: "asc" }, include: entryInclude },
+            },
+          },
+        },
+      },
     },
   });
 }
@@ -105,7 +119,7 @@ export async function getEntry(entryId: string) {
 /** Contenu de la corbeille : entrées + éléments de structure soft-deleted. */
 export async function listTrash() {
   const organizationId = await requireOrgId();
-  const [installations, pieces, points, softwareItems, entries] = await Promise.all([
+  const [installations, pieces, points, softwareItems, photosEnsemble, entries] = await Promise.all([
     prisma.installation.findMany({ where: { organizationId, deletedAt: { not: null } }, orderBy: { deletedAt: "desc" } }),
     prisma.piece.findMany({
       where: { deletedAt: { not: null }, installation: { organizationId } },
@@ -113,11 +127,19 @@ export async function listTrash() {
       include: { installation: true },
     }),
     prisma.point.findMany({
-      where: { deletedAt: { not: null }, piece: { installation: { organizationId } } },
+      where: {
+        deletedAt: { not: null },
+        OR: [{ piece: { installation: { organizationId } } }, { photoEnsemble: { installation: { organizationId } } }],
+      },
       orderBy: { deletedAt: "desc" },
-      include: { piece: true },
+      include: { piece: true, photoEnsemble: true },
     }),
     prisma.softwareItem.findMany({
+      where: { deletedAt: { not: null }, installation: { organizationId } },
+      orderBy: { deletedAt: "desc" },
+      include: { installation: true },
+    }),
+    prisma.photoEnsemble.findMany({
       where: { deletedAt: { not: null }, installation: { organizationId } },
       orderBy: { deletedAt: "desc" },
       include: { installation: true },
@@ -128,7 +150,7 @@ export async function listTrash() {
       include: entryInclude,
     }),
   ]);
-  return { installations, pieces, points, softwareItems, entries };
+  return { installations, pieces, points, softwareItems, photosEnsemble, entries };
 }
 
 /** Résolution d'une entrée partagée par token (usage page publique, hors scope org). */
@@ -137,7 +159,12 @@ export async function getSharedEntry(shareToken: string) {
     where: { shareToken, shareable: true, deletedAt: null },
     include: {
       ...entryInclude,
-      point: { include: { piece: { include: { installation: true } } } },
+      point: {
+        include: {
+          piece: { include: { installation: true } },
+          photoEnsemble: { include: { installation: true } },
+        },
+      },
       softwareItem: { include: { installation: true } },
       linkedPiece: { include: { installation: true } },
     },

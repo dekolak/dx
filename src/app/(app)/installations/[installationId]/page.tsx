@@ -6,6 +6,8 @@ import { AddSoftware } from "@/components/AddSoftware";
 import { DeleteButton } from "@/components/DeleteButton";
 import { InstallationActiveToggle } from "@/components/InstallationActiveToggle";
 import { InstallationEditForm } from "@/components/InstallationEditForm";
+import { OverviewSection } from "@/components/OverviewSection";
+import type { EntryData } from "@/components/EntryCard";
 
 export const dynamic = "force-dynamic";
 
@@ -32,6 +34,28 @@ export default async function InstallationPage({ params }: { params: Promise<{ i
         <span className="line" />
       </div>
       <InstallationEditForm installation={installation} />
+
+      <div className="section-title">
+        <span>Vue d’ensemble</span>
+        <span className="line" />
+      </div>
+      <OverviewSection
+        installationId={installation.id}
+        pieces={installation.pieces.map((p) => ({ id: p.id, name: p.name }))}
+        photos={installation.photosEnsemble.map((ph) => ({
+          id: ph.id,
+          url: ph.url,
+          label: ph.label,
+          points: ph.points.map((pt) => ({
+            id: pt.id,
+            num: pt.num,
+            x: pt.x,
+            y: pt.y,
+            targetPiece: pt.targetPiece,
+            entries: pt.entries as unknown as EntryData[],
+          })),
+        }))}
+      />
 
       <div className="section-title">
         <span>Pièces</span>

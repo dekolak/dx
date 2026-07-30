@@ -65,9 +65,10 @@ model Installation {
   createdAt      DateTime  @default(now())
   deletedAt      DateTime?
 
-  organization  Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  pieces        Piece[]
-  softwareItems SoftwareItem[]
+  organization   Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  pieces         Piece[]
+  softwareItems  SoftwareItem[]
+  photosEnsemble PhotoEnsemble[]
 
   @@index([organizationId])
   @@index([deletedAt])
@@ -84,28 +85,57 @@ model Piece {
   createdAt      DateTime  @default(now())
   deletedAt      DateTime?
 
-  installation  Installation @relation(fields: [installationId], references: [id], onDelete: Cascade)
-  points        Point[]
+  installation   Installation @relation(fields: [installationId], references: [id], onDelete: Cascade)
+  points         Point[]      @relation("PiecePoints") // points sur la photo de la pièce
+  // Points d'une photo d'ensemble qui pointent (raccourci) vers cette pièce.
+  shortcutPoints Point[]      @relation("PieceShortcuts")
   // Entrées de journal libres explicitement rattachées à cette pièce.
-  linkedEntries Entry[] @relation("PieceLinkedEntries")
+  linkedEntries  Entry[]      @relation("PieceLinkedEntries")
+
+  @@index([installationId])
+  @@index([deletedAt])
+}
+
+// Photo d'ensemble d'une installation (vue globale / plan d'atelier). Une
+// installation peut en avoir plusieurs. Les points dessus sont soit un raccourci
+// vers une Pièce, soit une info libre (avec ses propres entrées).
+model PhotoEnsemble {
+  id             String    @id @default(cuid())
+  installationId String
+  url            String // fichier disque, pleine résolution (comme la photo de pièce)
+  label          String? // ex : "Vue avant", "Plan atelier"
+  sortOrder      Int       @default(0)
+  createdAt      DateTime  @default(now())
+  deletedAt      DateTime?
+
+  installation Installation @relation(fields: [installationId], references: [id], onDelete: Cascade)
+  points       Point[]
 
   @@index([installationId])
   @@index([deletedAt])
 }
 
 model Point {
-  id        String    @id @default(cuid())
-  pieceId   String
-  x         Float? // position sur la photo, null si "point libre"/virtuel
-  y         Float?
-  num       Int
-  createdAt DateTime  @default(now())
-  deletedAt DateTime?
+  id              String    @id @default(cuid())
+  // Parent : EXACTEMENT un des deux (imposé côté appli).
+  pieceId         String? // point sur la photo d'une Pièce
+  photoEnsembleId String? // point sur une photo d'ensemble
+  // Si défini : ce point (d'ensemble) est un RACCOURCI vers cette Pièce.
+  targetPieceId   String?
+  x               Float? // position sur la photo, null si "point libre"/virtuel
+  y               Float?
+  num             Int
+  createdAt       DateTime  @default(now())
+  deletedAt       DateTime?
 
-  piece   Piece   @relation(fields: [pieceId], references: [id], onDelete: Cascade)
-  entries Entry[] // historique empilé
+  piece         Piece?         @relation("PiecePoints", fields: [pieceId], references: [id], onDelete: Cascade)
+  photoEnsemble PhotoEnsemble? @relation(fields: [photoEnsembleId], references: [id], onDelete: Cascade)
+  targetPiece   Piece?         @relation("PieceShortcuts", fields: [targetPieceId], references: [id], onDelete: SetNull)
+  entries       Entry[] // historique empilé (points info libre)
 
   @@index([pieceId])
+  @@index([photoEnsembleId])
+  @@index([targetPieceId])
   @@index([deletedAt])
 }
 

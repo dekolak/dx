@@ -10,7 +10,7 @@ export function TrashItem({
   title,
   subtitle,
 }: {
-  kind: "installation" | "piece" | "point" | "software" | "entry";
+  kind: "installation" | "piece" | "point" | "software" | "entry" | "photoEnsemble";
   id: string;
   title: string;
   subtitle?: string;

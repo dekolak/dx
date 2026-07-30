@@ -26,12 +26,22 @@ export const api = {
   updatePiece: (id: string, b: Record<string, unknown>) => req(`/api/pieces/${id}`, "PATCH", b),
   deletePiece: (id: string) => req(`/api/pieces/${id}`, "DELETE"),
 
-  createPoint: (b: { pieceId: string; x?: number; y?: number }) => req("/api/points", "POST", b),
+  createPoint: (b: {
+    pieceId?: string;
+    photoEnsembleId?: string;
+    targetPieceId?: string;
+    x?: number;
+    y?: number;
+  }) => req("/api/points", "POST", b),
   updatePoint: (id: string, b: Record<string, unknown>) => req(`/api/points/${id}`, "PATCH", b),
   deletePoint: (id: string) => req(`/api/points/${id}`, "DELETE"),
 
   createSoftware: (b: { installationId: string; name: string }) => req("/api/software", "POST", b),
   deleteSoftware: (id: string) => req(`/api/software/${id}`, "DELETE"),
+
+  createPhotoEnsemble: (b: { installationId: string; url: string; label?: string }) =>
+    req<{ id: string }>("/api/photos-ensemble", "POST", b),
+  deletePhotoEnsemble: (id: string) => req(`/api/photos-ensemble/${id}`, "DELETE"),
 
   createEntry: (b: {
     type: "point" | "software" | "journal";
