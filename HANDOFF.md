@@ -137,6 +137,10 @@ stocke que l'URL publique de l'objet.
 
 ## 9. Déploiement (Coolify)
 
+> **Guide complet et copier-coller : [`docs/COOLIFY.md`](./docs/COOLIFY.md)**
+> (service Postgres, variables d'env, CORS/lecture publique du bucket, seed).
+> Vérif upload OVH : `node scripts/test-upload.mjs`.
+
 - `Dockerfile` multi-stage (node:22-slim, openssl pour Prisma).
 - `docker-entrypoint.sh` : `prisma migrate deploy` puis `next start`.
 - Port `3000`. Healthcheck : `GET /api/health`.
@@ -176,9 +180,10 @@ docker compose up -d   # Postgres local
 
 **À faire / pistes :**
 
-- **Tester l'upload contre un vrai bucket OVH** (le flux presign→PUT→URL
-  publique n'a pas été exécuté contre OVH, seulement codé). Vérifier CORS du
-  bucket (autoriser PUT depuis l'origine de l'app) et lecture publique.
+- **Tester l'upload contre un vrai bucket OVH** — flux presign→PUT→URL publique
+  codé mais **non exécuté contre OVH** (aucune clé fournie à ce stade). Lancer
+  `node scripts/test-upload.mjs` avec les `S3_*` définies, puis un upload réel
+  dans l'app pour valider le CORS navigateur. Cf. `docs/COOLIFY.md` §3.
 - Icônes PNG (192/512) en complément du SVG si un navigateur refuse le SVG à
   l'installation PWA.
 - Compression/redimensionnement média côté client avant upload (perf mobile).
