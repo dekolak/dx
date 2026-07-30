@@ -9,6 +9,11 @@ WORKDIR /app
 RUN apt-get update -y && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
 
 COPY package.json package-lock.json ./
+# Le schéma DOIT être présent avant `npm ci` : le script postinstall lance
+# `prisma generate`, qui échoue sinon (schéma introuvable). C'est aussi ici que
+# le moteur Prisma (libquery_engine-debian-openssl-3.0.x) est téléchargé →
+# l'environnement de build a besoin d'un accès réseau sortant.
+COPY prisma ./prisma
 RUN npm ci
 
 COPY . .

@@ -43,6 +43,12 @@ Dans le projet Coolify → **+ New Resource → Database → PostgreSQL** (v16).
 | Health check path  | `/api/health`                                             |
 | Domaine            | ton domaine (ex : `dx.dekolak.fr`) — HTTPS via Coolify    |
 
+> **Réseau au build :** l'étape `npm ci` télécharge le moteur Prisma
+> (`libquery_engine-debian-openssl-3.0.x`) depuis le CDN Prisma. Le builder
+> Coolify doit avoir un **accès réseau sortant** (c'est le cas par défaut). Si
+> l'egress vers `binaries.prisma.sh` est bloqué, définir un miroir via la
+> variable de build `PRISMA_ENGINES_MIRROR`.
+
 ### Variables d'environnement
 
 À définir dans **Environment Variables** de l'application :
