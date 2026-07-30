@@ -595,6 +595,16 @@ label {
   padding: 44px 12px 12px;
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
 }
+.crop-canvas {
+  display: block;
+  max-width: 100%;
+  border-radius: 10px;
+  background: #000;
+  touch-action: none; /* on gère le geste de sélection nous-mêmes */
+  user-select: none;
+  -webkit-user-select: none;
+}
+
 .modal-close {
   position: absolute;
   top: 8px;
