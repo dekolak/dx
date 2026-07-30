@@ -1,0 +1,17 @@
+# Postgres local pour le développement.
+# Prod : base gérée séparément (Coolify / OVH), voir HANDOFF.md.
+services:
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: dx
+      POSTGRES_PASSWORD: dx
+      POSTGRES_DB: dx
+    ports:
+      - "5432:5432"
+    volumes:
+      - dx_pgdata:/var/lib/postgresql/data
+
+volumes:
+  dx_pgdata:
