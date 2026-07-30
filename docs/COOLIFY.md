@@ -9,10 +9,13 @@ copier-coller.
 Deux ressources dans le même projet Coolify :
 
 1. **Une base PostgreSQL** (ressource « Database » Coolify).
-2. **L'application** `dx` (ressource « Application », build par `Dockerfile`).
+2. **L'application** `dx` (ressource « Application », build par `Dockerfile`),
+   avec un **volume persistant** pour les médias (voir §3).
 
 Le conteneur applicatif applique les migrations au démarrage
-(`prisma migrate deploy`, via `docker-entrypoint.sh`) puis lance Next.
+(`prisma migrate deploy`, via `docker-entrypoint.sh`) puis lance Next. Les
+médias (photos/vidéos) sont stockés **sur le disque local** (volume Docker) et
+servis par l'app via `/api/media` — pas de stockage objet externe.
 
 ---
 
@@ -69,57 +72,44 @@ SEED_ORG_NAME=DTS Conception
 SEED_USER_EMAIL=teddy@dekolak.fr
 SEED_USER_PASSWORD=<mot-de-passe-fort>
 
-# Stockage média OVH Object Storage (API S3-compatible)
-S3_ENDPOINT=https://s3.gra.io.cloud.ovh.net
-S3_REGION=gra
-S3_BUCKET=dx-media
-S3_ACCESS_KEY_ID=<clé-ovh>
-S3_SECRET_ACCESS_KEY=<secret-ovh>
-S3_PUBLIC_BASE_URL=https://dx-media.s3.gra.io.cloud.ovh.net
+# Stockage média — disque local. Doit pointer vers le volume persistant (§3).
+UPLOAD_DIR=/data/dx-uploads
 
 # Limite d'upload (octets) — 50 Mo
 MAX_UPLOAD_BYTES=52428800
 ```
 
-> Adapte la région (`gra`, `sbg`, `de`…) et l'endpoint à ton bucket OVH.
-> `S3_PUBLIC_BASE_URL` = base d'URL publique des objets (ou un CDN devant le bucket).
-
 ---
 
-## 3. Bucket OVH — lecture publique + CORS
+## 3. Volume persistant pour les médias
 
-L'app affiche les médias sur des pages publiques (`/s/[shareToken]`) et fait des
-uploads **directs depuis le navigateur**. Deux prérequis sur le bucket :
+Les photos/vidéos sont écrites sur le disque local et **doivent survivre aux
+redéploiements** → un volume persistant est indispensable (sinon les médias
+disparaissent à chaque rebuild du conteneur).
 
-1. **Lecture publique** des objets (les uploads posent déjà `ACL: public-read`,
-   mais la policy du bucket doit l'autoriser).
-2. **CORS** autorisant le `PUT` présigné depuis l'origine de l'app :
+Dans l'application Coolify → **Storages → + Add → Volume Mount** (Persistent
+Storage) :
 
-```json
-[
-  {
-    "AllowedOrigins": ["https://dx.dekolak.fr"],
-    "AllowedMethods": ["PUT", "GET"],
-    "AllowedHeaders": ["*"],
-    "MaxAgeSeconds": 3000
-  }
-]
-```
+| Réglage                    | Valeur                        |
+| -------------------------- | ----------------------------- |
+| Name                       | `dx-uploads`                  |
+| Destination Path (conteneur) | `/data/dx-uploads`          |
+| Source (host, optionnel)   | ex. `/data/dx-uploads` sur le VPS |
 
-(Configurable via `aws s3api put-bucket-cors --endpoint-url $S3_ENDPOINT …`
-avec les credentials OVH, ou via l'espace client OVH.)
+Puis s'assurer que la variable d'env **`UPLOAD_DIR=/data/dx-uploads`** pointe sur
+ce même chemin **dans le conteneur** (Destination Path).
 
-### Vérifier avant de considérer que c'est bon
+- L'app crée les sous-dossiers (`<orgId>/…`) automatiquement au premier upload.
+- Les médias sont servis par la route **publique** `/api/media/[...]` (nécessaire
+  pour les pages de partage `/s/[shareToken]`). Les clés contiennent un
+  identifiant aléatoire → URLs non devinables.
+- Sauvegarde : inclure `/data/dx-uploads` (côté host) dans tes backups VPS.
 
-Depuis un environnement où les `S3_*` sont définies (ou avec un `.env` local) :
+### Vérifier après déploiement
 
-```bash
-node scripts/test-upload.mjs
-```
-
-Le script teste : presign → PUT → **lecture publique** → nettoyage, et rappelle
-la config CORS attendue. Le CORS navigateur se valide ensuite par un vrai upload
-dans l'app (ajouter une photo à une entrée).
+Un simple test dans l'app suffit : se connecter, ajouter une photo à une entrée,
+vérifier qu'elle s'affiche, puis redéployer et confirmer qu'elle est toujours là
+(volume persistant OK).
 
 ---
 
@@ -147,4 +137,5 @@ recrée pas si l'email existe déjà). Connexion ensuite avec
 3. Au démarrage : `prisma migrate deploy` puis `next start` (port 3000).
 4. Healthcheck sur `/api/health`.
 5. (Premier déploiement uniquement) `npm run db:seed`.
-6. Vérifier l'upload OVH via `scripts/test-upload.mjs` + un upload réel dans l'app.
+6. Vérifier qu'un volume persistant est monté sur `UPLOAD_DIR` (§3), puis tester
+   un upload + affichage réel dans l'app.

@@ -50,18 +50,14 @@ export const api = {
   purge: (kind: string, id: string) => req(`/api/trash/${kind}/${id}`, "DELETE"),
 };
 
-/** Upload direct vers OVH via URL présignée. Retourne le média à rattacher. */
+/** Upload d'un fichier vers le disque local du serveur. Retourne le média. */
 export async function uploadFile(file: File): Promise<Media> {
-  const presign = await req<{ uploadUrl: string; publicUrl: string; mediaType: "photo" | "video" }>(
-    "/api/upload",
-    "POST",
-    { filename: file.name, contentType: file.type, size: file.size },
-  );
-  const put = await fetch(presign.uploadUrl, {
-    method: "PUT",
-    headers: { "Content-Type": file.type, "x-amz-acl": "public-read" },
+  const res = await fetch(`/api/upload?filename=${encodeURIComponent(file.name)}`, {
+    method: "POST",
+    headers: { "Content-Type": file.type || "application/octet-stream" },
     body: file,
   });
-  if (!put.ok) throw new Error("Échec de l'upload du média");
-  return { url: presign.publicUrl, type: presign.mediaType };
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error((data as { error?: string }).error || "Échec de l'upload du média");
+  return { url: (data as Media).url, type: (data as Media).type };
 }
