@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { getPiece } from "@/lib/data";
 import { PhotoAnnotator } from "@/components/PhotoAnnotator";
 import type { EntryData } from "@/components/EntryCard";
-import { CollapsiblePoint } from "@/components/CollapsiblePoint";
+import { PointsAccordion } from "@/components/PointsAccordion";
 import { DeleteButton } from "@/components/DeleteButton";
 
 export const dynamic = "force-dynamic";
@@ -38,28 +38,23 @@ export default async function PiecePage({ params }: { params: Promise<{ pieceId:
         <p className="empty">Aucun point. Placez un point sur la photo, ou créez un point libre.</p>
       )}
 
-      <div className="grid">
-        {piece.points.map((point) => (
-          <CollapsiblePoint
-            key={point.id}
-            point={{ id: point.id, num: point.num, x: point.x, y: point.y }}
-            entries={point.entries as unknown as EntryData[]}
-          />
-        ))}
-      </div>
-
-      <div className="section-title">
-        <span>Zone de danger</span>
-        <span className="line" />
-      </div>
-      <DeleteButton
-        kind="piece"
-        id={piece.id}
-        label="🗑️ Supprimer la pièce"
-        confirmText="Envoyer cette pièce à la corbeille ?"
-        redirectTo={`/machines/${piece.machineId}`}
-        className="btn danger"
+      <PointsAccordion
+        items={piece.points.map((point) => ({
+          point: { id: point.id, num: point.num, x: point.x, y: point.y },
+          entries: point.entries as unknown as EntryData[],
+        }))}
       />
+
+      <div className="danger-zone">
+        <DeleteButton
+          kind="piece"
+          id={piece.id}
+          label="🗑️ Supprimer la pièce"
+          confirmText="Envoyer cette pièce à la corbeille ?"
+          redirectTo={`/machines/${piece.machineId}`}
+          className="btn ghost sm danger"
+        />
+      </div>
     </>
   );
 }

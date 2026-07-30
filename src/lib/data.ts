@@ -10,15 +10,25 @@ export type EntryWithMedia = Awaited<ReturnType<typeof getEntry>>;
 
 const entryInclude = { media: { where: { deletedAt: null }, orderBy: { createdAt: "asc" } } } as const;
 
-export async function listMachines() {
+export async function listMachines(opts?: { includeInactive?: boolean }) {
   const organizationId = await requireOrgId();
   return prisma.machine.findMany({
-    where: { organizationId, deletedAt: null },
-    orderBy: { name: "asc" },
+    where: { organizationId, deletedAt: null, ...(opts?.includeInactive ? {} : { active: true }) },
+    orderBy: [{ active: "desc" }, { name: "asc" }],
     include: {
       _count: { select: { pieces: { where: { deletedAt: null } }, softwareItems: { where: { deletedAt: null } } } },
     },
   });
+}
+
+/** Compte des machines actives / inactives (pour l'entête de la vue principale). */
+export async function machineCounts() {
+  const organizationId = await requireOrgId();
+  const [active, inactive] = await Promise.all([
+    prisma.machine.count({ where: { organizationId, deletedAt: null, active: true } }),
+    prisma.machine.count({ where: { organizationId, deletedAt: null, active: false } }),
+  ]);
+  return { active, inactive };
 }
 
 export async function getMachine(machineId: string) {

@@ -50,27 +50,50 @@ function nonEmpty(value: unknown, field: string): string {
 
 // --- Machines ---------------------------------------------------------------
 
-export async function createMachine(input: { name?: unknown; category?: unknown }) {
+// Petit helper : chaîne optionnelle nettoyée (null si vide).
+function optStr(v: unknown): string | null {
+  return typeof v === "string" && v.trim() ? v.trim() : null;
+}
+
+type MachineInput = {
+  name?: unknown;
+  category?: unknown;
+  brand?: unknown;
+  model?: unknown;
+  machineRef?: unknown;
+  clientRef?: unknown;
+  active?: unknown;
+};
+
+export async function createMachine(input: MachineInput) {
   const organizationId = await requireOrgId();
   return prisma.machine.create({
     data: {
       organizationId,
       name: nonEmpty(input.name, "name"),
-      category: typeof input.category === "string" && input.category.trim() ? input.category.trim() : null,
+      category: optStr(input.category),
+      brand: optStr(input.brand),
+      model: optStr(input.model),
+      machineRef: optStr(input.machineRef),
+      clientRef: optStr(input.clientRef),
+      ...(typeof input.active === "boolean" ? { active: input.active } : {}),
     },
   });
 }
 
-export async function updateMachine(id: string, input: { name?: unknown; category?: unknown }) {
+export async function updateMachine(id: string, input: MachineInput) {
   const organizationId = await requireOrgId();
   await assertMachine(organizationId, id);
   return prisma.machine.update({
     where: { id },
     data: {
       ...(input.name !== undefined ? { name: nonEmpty(input.name, "name") } : {}),
-      ...(input.category !== undefined
-        ? { category: typeof input.category === "string" && input.category.trim() ? input.category.trim() : null }
-        : {}),
+      ...(input.category !== undefined ? { category: optStr(input.category) } : {}),
+      ...(input.brand !== undefined ? { brand: optStr(input.brand) } : {}),
+      ...(input.model !== undefined ? { model: optStr(input.model) } : {}),
+      ...(input.machineRef !== undefined ? { machineRef: optStr(input.machineRef) } : {}),
+      ...(input.clientRef !== undefined ? { clientRef: optStr(input.clientRef) } : {}),
+      ...(typeof input.active === "boolean" ? { active: input.active } : {}),
     },
   });
 }

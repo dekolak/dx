@@ -54,6 +54,11 @@ model Machine {
   organizationId String
   name           String // ex: "DXonJet", "Weco Voyager"
   category       String? // libre
+  brand          String? // marque
+  model          String? // modèle
+  machineRef     String? // référence machine
+  clientRef      String? // référence client
+  active         Boolean   @default(true) // machine utilisée au quotidien (vue principale)
   createdAt      DateTime  @default(now())
   deletedAt      DateTime?
 
@@ -63,6 +68,7 @@ model Machine {
 
   @@index([organizationId])
   @@index([deletedAt])
+  @@index([active])
 }
 
 model Piece {

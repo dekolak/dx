@@ -4,6 +4,8 @@ import { getMachine } from "@/lib/data";
 import { AddPiece } from "@/components/AddPiece";
 import { AddSoftware } from "@/components/AddSoftware";
 import { DeleteButton } from "@/components/DeleteButton";
+import { MachineActiveToggle } from "@/components/MachineActiveToggle";
+import { MachineEditForm } from "@/components/MachineEditForm";
 
 export const dynamic = "force-dynamic";
 
@@ -21,8 +23,15 @@ export default async function MachinePage({ params }: { params: Promise<{ machin
       </div>
       <div className="topbar">
         <h1>{machine.name}</h1>
+        <MachineActiveToggle id={machine.id} active={machine.active} />
       </div>
       {machine.category && <div className="crumbs">{machine.category}</div>}
+
+      <div className="section-title">
+        <span>Fiche</span>
+        <span className="line" />
+      </div>
+      <MachineEditForm machine={machine} />
 
       <div className="section-title">
         <span>Pièces</span>
@@ -65,18 +74,16 @@ export default async function MachinePage({ params }: { params: Promise<{ machin
         <AddSoftware machineId={machine.id} />
       </div>
 
-      <div className="section-title">
-        <span>Zone de danger</span>
-        <span className="line" />
+      <div className="danger-zone">
+        <DeleteButton
+          kind="machine"
+          id={machine.id}
+          label="🗑️ Supprimer la machine"
+          confirmText="Envoyer cette machine à la corbeille ?"
+          redirectTo="/"
+          className="btn ghost sm danger"
+        />
       </div>
-      <DeleteButton
-        kind="machine"
-        id={machine.id}
-        label="🗑️ Supprimer la machine"
-        confirmText="Envoyer cette machine à la corbeille ?"
-        redirectTo="/"
-        className="btn danger"
-      />
     </>
   );
 }
