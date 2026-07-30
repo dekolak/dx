@@ -245,6 +245,12 @@ sur GitHub ; **déploiement Coolify en cours** (relancé côté Teddy).
   + entrées). Réutilise `ZoomablePhoto` (moteur zoom/pan extrait de
   `PhotoAnnotator`), l'accordéon et les Entrées. Vérifié mobile de bout en bout
   (upload, point raccourci, point info, navigation, suppression/corbeille/restore).
+- **Photos d'ensemble réordonnables + libellé éditable** : glisser-déposer
+  tactile maison (`ReorderableList` — pointer events, poignée `≡` dédiée,
+  `touch-action: none`, aperçu par insertion ; aucune dépendance) via le panneau
+  `OverviewReorder` (affiché dès 2 photos) → `POST /api/photos-ensemble/reorder`.
+  Libellé par photo éditable en place (`PATCH /api/photos-ensemble/[id]`, champ
+  `label`). Vérifié mobile (drag tactile, persistance, édition libellé).
 - **Accordéon des points** (`PointsAccordion`) : un seul point ouvert à la fois ;
   `CollapsiblePoint` est désormais contrôlé (open/onToggle).
 - **Boutons Supprimer discrets** partout (`btn ghost sm/xs danger`, `.danger-zone`).

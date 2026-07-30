@@ -3,6 +3,7 @@ import type { EntryData } from "@/components/EntryCard";
 import { OverviewAnnotator } from "@/components/OverviewAnnotator";
 import { PointsAccordion } from "@/components/PointsAccordion";
 import { AddPhotoEnsemble } from "@/components/AddPhotoEnsemble";
+import { OverviewReorder } from "@/components/OverviewReorder";
 
 type TargetPiece = { id: string; name: string; deletedAt: string | Date | null } | null;
 type OverviewPoint = { id: string; num: number; x: number | null; y: number | null; targetPiece: TargetPiece; entries: EntryData[] };
@@ -21,6 +22,13 @@ export function OverviewSection({
 }) {
   return (
     <div className="grid" style={{ gap: 18 }}>
+      {photos.length >= 2 && (
+        <OverviewReorder
+          installationId={installationId}
+          photos={photos.map((p) => ({ id: p.id, url: p.url, label: p.label }))}
+        />
+      )}
+
       {photos.map((photo) => {
         const shortcuts = photo.points.filter((p) => p.targetPiece);
         const infos = photo.points.filter((p) => !p.targetPiece);

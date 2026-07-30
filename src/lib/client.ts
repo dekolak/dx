@@ -41,7 +41,10 @@ export const api = {
 
   createPhotoEnsemble: (b: { installationId: string; url: string; label?: string }) =>
     req<{ id: string }>("/api/photos-ensemble", "POST", b),
+  updatePhotoEnsemble: (id: string, b: { label?: string }) => req(`/api/photos-ensemble/${id}`, "PATCH", b),
   deletePhotoEnsemble: (id: string) => req(`/api/photos-ensemble/${id}`, "DELETE"),
+  reorderPhotosEnsemble: (installationId: string, orderedIds: string[]) =>
+    req("/api/photos-ensemble/reorder", "POST", { installationId, orderedIds }),
 
   createEntry: (b: {
     type: "point" | "software" | "journal";
