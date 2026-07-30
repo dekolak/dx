@@ -84,7 +84,14 @@ l'appartenance (`assertInstallation`, `assertPiece`, …) AVANT toute mutation.
 ## 5. Modèle de données
 
 Voir `prisma/schema.prisma`. Modèles : `Organization`, `User`, `Installation`,
-`Piece`, `Point`, `SoftwareItem`, `Entry`, `Media`.
+`Piece`, `Point`, `SoftwareItem`, `Entry`, `Media`, `PhotoEnsemble`.
+
+> **Vue d'ensemble** : une `Installation` peut avoir plusieurs `PhotoEnsemble`
+> (photos globales / plan d'atelier). `Point` est **polymorphe** : son parent est
+> soit une `Piece` (`pieceId`), soit une `PhotoEnsemble` (`photoEnsembleId`) —
+> exactement un des deux (imposé côté appli). Un point d'ensemble avec
+> `targetPieceId` est un **raccourci** (clic → `/pieces/[id]`) ; sans, c'est un
+> **point d'info libre** avec ses propres entrées (comme un point virtuel).
 
 > **Renommage Machine → Installation** : le concept de haut niveau s'appelle
 > désormais « Installation » (une machine seule OU un atelier entier). Pour
@@ -231,9 +238,13 @@ sur GitHub ; **déploiement Coolify en cours** (relancé côté Teddy).
   installations actives ; les autres via `/installations` (« Toutes les
   installations »), avec bascule active/inactive.
 - **Concept générique** : « Installation » représente une machine seule OU une
-  infra/atelier. Évolution prévue (plus tard) : photo d'ensemble annotée au
-  niveau installation, dont les points renvoient vers une Pièce ou portent une
-  info libre.
+  infra/atelier.
+- **Vue d'ensemble** (`OverviewSection`, `OverviewAnnotator`, `PhotoEnsemble`) :
+  une ou plusieurs photos d'ensemble par installation, avec points — soit
+  **raccourci** vers une Pièce (clic → sa fiche), soit **info libre** (accordéon
+  + entrées). Réutilise `ZoomablePhoto` (moteur zoom/pan extrait de
+  `PhotoAnnotator`), l'accordéon et les Entrées. Vérifié mobile de bout en bout
+  (upload, point raccourci, point info, navigation, suppression/corbeille/restore).
 - **Accordéon des points** (`PointsAccordion`) : un seul point ouvert à la fois ;
   `CollapsiblePoint` est désormais contrôlé (open/onToggle).
 - **Boutons Supprimer discrets** partout (`btn ghost sm/xs danger`, `.danger-zone`).

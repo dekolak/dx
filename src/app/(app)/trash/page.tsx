@@ -8,8 +8,9 @@ function excerpt(text: string) {
 }
 
 export default async function TrashPage() {
-  const { installations, pieces, points, softwareItems, entries } = await listTrash();
-  const total = installations.length + pieces.length + points.length + softwareItems.length + entries.length;
+  const { installations, pieces, points, softwareItems, photosEnsemble, entries } = await listTrash();
+  const total =
+    installations.length + pieces.length + points.length + softwareItems.length + photosEnsemble.length + entries.length;
 
   return (
     <>
@@ -31,7 +32,22 @@ export default async function TrashPage() {
           <TrashItem key={p.id} kind="piece" id={p.id} title={p.name} subtitle={`Installation : ${p.installation.name}`} />
         ))}
         {points.map((p) => (
-          <TrashItem key={p.id} kind="point" id={p.id} title={`Point ${p.num}`} subtitle={`Pièce : ${p.piece.name}`} />
+          <TrashItem
+            key={p.id}
+            kind="point"
+            id={p.id}
+            title={`Point ${p.num}`}
+            subtitle={p.piece ? `Pièce : ${p.piece.name}` : "Photo d’ensemble"}
+          />
+        ))}
+        {photosEnsemble.map((ph) => (
+          <TrashItem
+            key={ph.id}
+            kind="photoEnsemble"
+            id={ph.id}
+            title={ph.label || "Photo d’ensemble"}
+            subtitle={`Installation : ${ph.installation.name}`}
+          />
         ))}
         {softwareItems.map((s) => (
           <TrashItem key={s.id} kind="software" id={s.id} title={s.name} subtitle={`Installation : ${s.installation.name}`} />

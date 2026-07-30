@@ -427,6 +427,9 @@ label {
   box-shadow: 0 1px 6px rgba(0, 0, 0, 0.5);
   will-change: transform;
 }
+.annotator .marker.shortcut {
+  background: var(--ok);
+}
 .annotator.placing {
   cursor: crosshair;
   outline: 2px dashed var(--accent);

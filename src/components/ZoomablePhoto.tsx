@@ -1,0 +1,235 @@
+"use client";
+import { useCallback, useEffect, useRef, useState } from "react";
+
+export type PhotoMarker = {
+  id: string;
+  num: number;
+  x: number | null;
+  y: number | null;
+  href: string; // "#point-<id>" (info) ou "/pieces/<id>" (raccourci)
+  className?: string; // ex "shortcut"
+};
+
+const MIN_SCALE = 1;
+const MAX_SCALE = 6;
+const TAP_MOVE_TOL = 8;
+const TAP_MAX_MS = 400;
+const DOUBLE_TAP_MS = 300;
+const clamp = (v: number, a: number, b: number) => Math.min(b, Math.max(a, v));
+const dist = (a: { x: number; y: number }, b: { x: number; y: number }) => Math.hypot(a.x - b.x, a.y - b.y);
+
+// Cœur réutilisable de la photo annotée (pièce OU photo d'ensemble) :
+// pinch-to-zoom, pan, double-tap, pastilles à taille écran constante, et
+// placement d'un point aux coordonnées EXACTES (rect transformé de l'image).
+// Ne connaît rien du domaine : signale un placement via `onPlace(x, y)`.
+export function ZoomablePhoto({
+  photoUrl,
+  markers,
+  placing,
+  onPlace,
+  alt = "Photo",
+}: {
+  photoUrl: string;
+  markers: PhotoMarker[];
+  placing: boolean;
+  onPlace: (x: number, y: number) => void;
+  alt?: string;
+}) {
+  const [zoomed, setZoomed] = useState(false);
+  const stageRef = useRef<HTMLDivElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
+  const imgRef = useRef<HTMLImageElement>(null);
+  const placingRef = useRef(placing);
+  placingRef.current = placing;
+
+  const tf = useRef({ scale: 1, tx: 0, ty: 0 });
+  const pointers = useRef<Map<number, { x: number; y: number }>>(new Map());
+  const g = useRef({ startX: 0, startY: 0, startTime: 0, prevMidX: 0, prevMidY: 0, prevDist: 0, moved: false, pinched: false, onMarker: false, lastTapTime: 0 });
+  const rafId = useRef(0);
+
+  const applyTransform = useCallback(() => {
+    const c = contentRef.current;
+    if (!c) return;
+    const { scale, tx, ty } = tf.current;
+    c.style.transform = `translate(${tx}px, ${ty}px) scale(${scale})`;
+    c.style.setProperty("--inv-scale", String(1 / scale));
+  }, []);
+
+  useEffect(() => {
+    applyTransform();
+  });
+
+  const scheduleApply = useCallback(() => {
+    if (rafId.current) return;
+    rafId.current = requestAnimationFrame(() => {
+      rafId.current = 0;
+      applyTransform();
+    });
+  }, [applyTransform]);
+
+  const clampPan = useCallback(() => {
+    const stage = stageRef.current;
+    if (!stage) return;
+    const w = stage.clientWidth;
+    const h = stage.clientHeight;
+    const s = tf.current.scale;
+    tf.current.tx = clamp(tf.current.tx, w * (1 - s), 0);
+    tf.current.ty = clamp(tf.current.ty, h * (1 - s), 0);
+  }, []);
+
+  function zoomAround(cx: number, cy: number, nextScale: number) {
+    const stage = stageRef.current;
+    if (!stage) return;
+    const rect = stage.getBoundingClientRect();
+    const fx = cx - rect.left;
+    const fy = cy - rect.top;
+    const s0 = tf.current.scale;
+    const s1 = clamp(nextScale, MIN_SCALE, MAX_SCALE);
+    tf.current.tx = fx - (fx - tf.current.tx) * (s1 / s0);
+    tf.current.ty = fy - (fy - tf.current.ty) * (s1 / s0);
+    tf.current.scale = s1;
+    clampPan();
+    applyTransform();
+    setZoomed(s1 > 1.01);
+  }
+
+  function resetZoom() {
+    tf.current = { scale: 1, tx: 0, ty: 0 };
+    applyTransform();
+    setZoomed(false);
+  }
+
+  function handleTap(clientX: number, clientY: number) {
+    if (placingRef.current) {
+      const el = imgRef.current;
+      if (!el) return;
+      const rect = el.getBoundingClientRect(); // reflète zoom + pan
+      onPlace(clamp((clientX - rect.left) / rect.width, 0, 1), clamp((clientY - rect.top) / rect.height, 0, 1));
+      return;
+    }
+    const now = performance.now();
+    if (now - g.current.lastTapTime < DOUBLE_TAP_MS) {
+      g.current.lastTapTime = 0;
+      if (tf.current.scale > 1.01) resetZoom();
+      else zoomAround(clientX, clientY, 2.5);
+    } else {
+      g.current.lastTapTime = now;
+    }
+  }
+
+  function onPointerDown(e: React.PointerEvent<HTMLDivElement>) {
+    if ((e.target as Element).closest?.(".marker")) {
+      g.current.onMarker = true;
+      return;
+    }
+    g.current.onMarker = false;
+    stageRef.current?.setPointerCapture(e.pointerId);
+    pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    const pts = [...pointers.current.values()];
+    if (pts.length === 1) {
+      g.current.startX = e.clientX;
+      g.current.startY = e.clientY;
+      g.current.startTime = performance.now();
+      g.current.prevMidX = e.clientX;
+      g.current.prevMidY = e.clientY;
+      g.current.moved = false;
+      g.current.pinched = false;
+    } else if (pts.length === 2) {
+      g.current.pinched = true;
+      g.current.prevDist = dist(pts[0], pts[1]);
+      g.current.prevMidX = (pts[0].x + pts[1].x) / 2;
+      g.current.prevMidY = (pts[0].y + pts[1].y) / 2;
+    }
+  }
+
+  function onPointerMove(e: React.PointerEvent<HTMLDivElement>) {
+    if (!pointers.current.has(e.pointerId)) return;
+    pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    const pts = [...pointers.current.values()];
+    if (pts.length >= 2) {
+      e.preventDefault();
+      const [p0, p1] = pts;
+      const curDist = dist(p0, p1) || 1;
+      const midX = (p0.x + p1.x) / 2;
+      const midY = (p0.y + p1.y) / 2;
+      const s0 = tf.current.scale;
+      const s1 = clamp(s0 * (curDist / (g.current.prevDist || curDist)), MIN_SCALE, MAX_SCALE);
+      const rect = stageRef.current!.getBoundingClientRect();
+      const fx = midX - rect.left;
+      const fy = midY - rect.top;
+      tf.current.tx = fx - (fx - tf.current.tx) * (s1 / s0) + (midX - g.current.prevMidX);
+      tf.current.ty = fy - (fy - tf.current.ty) * (s1 / s0) + (midY - g.current.prevMidY);
+      tf.current.scale = s1;
+      g.current.prevDist = curDist;
+      g.current.prevMidX = midX;
+      g.current.prevMidY = midY;
+      g.current.moved = true;
+      g.current.pinched = true;
+      clampPan();
+      scheduleApply();
+    } else if (pts.length === 1) {
+      if (Math.abs(e.clientX - g.current.startX) > TAP_MOVE_TOL || Math.abs(e.clientY - g.current.startY) > TAP_MOVE_TOL) g.current.moved = true;
+      if (tf.current.scale > 1.01) {
+        e.preventDefault();
+        tf.current.tx += e.clientX - g.current.prevMidX;
+        tf.current.ty += e.clientY - g.current.prevMidY;
+        clampPan();
+        scheduleApply();
+      }
+      g.current.prevMidX = e.clientX;
+      g.current.prevMidY = e.clientY;
+    }
+  }
+
+  function onPointerUp(e: React.PointerEvent<HTMLDivElement>) {
+    if (g.current.onMarker) {
+      g.current.onMarker = false;
+      return;
+    }
+    if (!pointers.current.has(e.pointerId)) return;
+    const single = pointers.current.size === 1;
+    const upX = e.clientX;
+    const upY = e.clientY;
+    pointers.current.delete(e.pointerId);
+    stageRef.current?.releasePointerCapture?.(e.pointerId);
+    if (pointers.current.size === 0) {
+      const isTap = single && !g.current.moved && !g.current.pinched && performance.now() - g.current.startTime < TAP_MAX_MS;
+      if (isTap) handleTap(upX, upY);
+      setZoomed(tf.current.scale > 1.01);
+      g.current.pinched = false;
+    }
+  }
+
+  const placed = markers.filter((p) => p.x != null && p.y != null);
+
+  return (
+    <div
+      ref={stageRef}
+      className={`annotator ${placing ? "placing" : ""}`}
+      onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
+      onPointerUp={onPointerUp}
+      onPointerCancel={onPointerUp}
+    >
+      <div ref={contentRef} className="annotator-content">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img ref={imgRef} src={photoUrl} alt={alt} draggable={false} />
+        {placed.map((p) => (
+          <a
+            key={p.id}
+            href={p.href}
+            className={`marker ${p.className ?? ""}`}
+            style={{ left: `${(p.x as number) * 100}%`, top: `${(p.y as number) * 100}%` }}
+          >
+            {p.num}
+          </a>
+        ))}
+      </div>
+      {zoomed && (
+        <button type="button" className="zoom-reset" onClick={resetZoom} aria-label="Réinitialiser le zoom">
+          ⟲
+        </button>
+      )}
+    </div>
+  );
+}
