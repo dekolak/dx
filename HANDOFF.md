@@ -203,6 +203,15 @@ sur GitHub ; **déploiement Coolify en cours** (relancé côté Teddy).
   via l'ancre `#point-<id>`), et **galerie de vignettes** par point — clic sur
   une vignette → modale de détail complet (réutilise `EntryCard`). Vérifié au
   viewport mobile (galerie, modale, pas de débordement horizontal).
+- **Photo annotée zoomable (mobile)** dans `PhotoAnnotator` : pincer pour
+  zoomer, glisser pour déplacer, double-tap pour (dé)zoomer, bouton reset. Les
+  pastilles gardent une **taille écran constante** (contre-scale `1/zoom` via la
+  variable CSS `--inv-scale`) → plus précises vs la photo. Placement d'un point
+  correct même zoomé : coords calculées depuis le **rect transformé de l'image**
+  (`getBoundingClientRect` reflète zoom+pan) → jamais décalées. Moteur de gestes
+  maison (Pointer Events, `touch-action: none`). Vérifié avec de **vrais gestes
+  tactiles** (pinch/pan/tap via CDP) au viewport mobile : zoom 1→4.3×, pastille
+  constante à 30px, point placé à Δ≈0 de la cible.
 - Software timeline, Journal (ajout rapide + lien pièce optionnel).
 - Partage public `/s/[shareToken]` (testé sans cookie).
 - Soft delete + corbeille (restaurer / purger, purge = suppression fichier disque).

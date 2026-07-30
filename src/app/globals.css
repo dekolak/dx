@@ -264,15 +264,29 @@ label {
   overflow: hidden;
   background: var(--surface-2);
   border: 1px solid var(--border);
-  touch-action: manipulation;
+  /* On gère nous-mêmes pinch/pan → couper les gestes natifs du navigateur. */
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.annotator-content {
+  position: relative;
+  width: 100%;
+  transform-origin: 0 0;
+  will-change: transform;
 }
 .annotator img {
   display: block;
   width: 100%;
+  pointer-events: none; /* les taps passent au stage */
+  -webkit-user-drag: none;
+  user-select: none;
 }
 .annotator .marker {
   position: absolute;
-  transform: translate(-50%, -50%);
+  /* Contre-scale 1/zoom → taille écran constante = plus précis quand on zoome. */
+  transform: translate(-50%, -50%) scale(var(--inv-scale, 1));
+  transform-origin: center;
   width: 30px;
   height: 30px;
   border-radius: 50%;
@@ -285,14 +299,27 @@ label {
   font-size: 13px;
   font-weight: 700;
   box-shadow: 0 1px 6px rgba(0, 0, 0, 0.5);
-}
-.annotator .marker.active {
-  background: var(--ok);
+  will-change: transform;
 }
 .annotator.placing {
   cursor: crosshair;
   outline: 2px dashed var(--accent);
   outline-offset: -2px;
+}
+.zoom-reset {
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  z-index: 2;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
 }
 
 .hint {
