@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { api } from "@/lib/client";
 
 const fn = {
-  machine: api.deleteMachine,
+  installation: api.deleteInstallation,
   piece: api.deletePiece,
   point: api.deletePoint,
   software: api.deleteSoftware,

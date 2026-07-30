@@ -29,7 +29,7 @@ export default async function JournalPage() {
               <div className="crumbs" style={{ marginBottom: 4 }}>
                 🔗 Lié à{" "}
                 <Link href={`/pieces/${e.linkedPiece.id}`} style={{ color: "var(--accent)" }}>
-                  {e.linkedPiece.machine.name} — {e.linkedPiece.name}
+                  {e.linkedPiece.installation.name} — {e.linkedPiece.name}
                 </Link>
               </div>
             )}

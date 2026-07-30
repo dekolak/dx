@@ -24,9 +24,9 @@ model Organization {
   name      String
   createdAt DateTime @default(now())
 
-  users    User[]
-  machines Machine[]
-  entries  Entry[]
+  users         User[]
+  installations Installation[]
+  entries       Entry[]
 }
 
 // Auth simple aujourd'hui (un seul utilisateur), mais le modèle accueille déjà
@@ -46,19 +46,22 @@ model User {
 }
 
 // ---------------------------------------------------------------------------
-// Domaine : Machine > Pièce > Point > Entry  (+ Software par machine)
+// Domaine : Installation > Pièce > Point > Entry  (+ Software par installation)
+// NB : le modèle « Installation » est mappé sur la table historique « Machine »
+// (@@map), et les FK gardent le nom de colonne « machineId » (@map) → renommage
+// purement applicatif, aucune migration de données.
 // ---------------------------------------------------------------------------
 
-model Machine {
+model Installation {
   id             String    @id @default(cuid())
   organizationId String
-  name           String // ex: "DXonJet", "Weco Voyager"
+  name           String // ex: "DXonJet", "Weco Voyager", "Atelier découpe"
   category       String? // libre
   brand          String? // marque
   model          String? // modèle
   machineRef     String? // référence machine
   clientRef      String? // référence client
-  active         Boolean   @default(true) // machine utilisée au quotidien (vue principale)
+  active         Boolean   @default(true) // utilisée au quotidien (vue principale)
   createdAt      DateTime  @default(now())
   deletedAt      DateTime?
 
@@ -69,23 +72,24 @@ model Machine {
   @@index([organizationId])
   @@index([deletedAt])
   @@index([active])
+  @@map("Machine")
 }
 
 model Piece {
-  id        String    @id @default(cuid())
-  machineId String
-  name      String
-  category  String? // libre, texte simple (~10 pièces max par machine)
-  photoUrl  String? // photo principale annotée
-  createdAt DateTime  @default(now())
-  deletedAt DateTime?
+  id             String    @id @default(cuid())
+  installationId String    @map("machineId")
+  name           String
+  category       String? // libre, texte simple (~10 pièces max)
+  photoUrl       String? // photo principale annotée
+  createdAt      DateTime  @default(now())
+  deletedAt      DateTime?
 
-  machine       Machine @relation(fields: [machineId], references: [id], onDelete: Cascade)
+  installation  Installation @relation(fields: [installationId], references: [id], onDelete: Cascade)
   points        Point[]
   // Entrées de journal libres explicitement rattachées à cette pièce.
   linkedEntries Entry[] @relation("PieceLinkedEntries")
 
-  @@index([machineId])
+  @@index([installationId])
   @@index([deletedAt])
 }
 
@@ -106,16 +110,16 @@ model Point {
 }
 
 model SoftwareItem {
-  id        String    @id @default(cuid())
-  machineId String
-  name      String // ex: nom / version logiciel
-  createdAt DateTime  @default(now())
-  deletedAt DateTime?
+  id             String    @id @default(cuid())
+  installationId String    @map("machineId")
+  name           String // ex: nom / version logiciel
+  createdAt      DateTime  @default(now())
+  deletedAt      DateTime?
 
-  machine Machine @relation(fields: [machineId], references: [id], onDelete: Cascade)
-  entries Entry[] // changelog empilé
+  installation Installation @relation(fields: [installationId], references: [id], onDelete: Cascade)
+  entries      Entry[] // changelog empilé
 
-  @@index([machineId])
+  @@index([installationId])
   @@index([deletedAt])
 }
 

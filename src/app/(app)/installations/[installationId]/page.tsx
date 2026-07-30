@@ -1,45 +1,45 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getMachine } from "@/lib/data";
+import { getInstallation } from "@/lib/data";
 import { AddPiece } from "@/components/AddPiece";
 import { AddSoftware } from "@/components/AddSoftware";
 import { DeleteButton } from "@/components/DeleteButton";
-import { MachineActiveToggle } from "@/components/MachineActiveToggle";
-import { MachineEditForm } from "@/components/MachineEditForm";
+import { InstallationActiveToggle } from "@/components/InstallationActiveToggle";
+import { InstallationEditForm } from "@/components/InstallationEditForm";
 
 export const dynamic = "force-dynamic";
 
-export default async function MachinePage({ params }: { params: Promise<{ machineId: string }> }) {
-  const { machineId } = await params;
-  const machine = await getMachine(machineId);
-  if (!machine) notFound();
+export default async function InstallationPage({ params }: { params: Promise<{ installationId: string }> }) {
+  const { installationId } = await params;
+  const installation = await getInstallation(installationId);
+  if (!installation) notFound();
 
   return (
     <>
       <div className="topbar">
         <Link href="/" className="back">
-          ‹ Machines
+          ‹ Installations
         </Link>
       </div>
       <div className="topbar">
-        <h1>{machine.name}</h1>
-        <MachineActiveToggle id={machine.id} active={machine.active} />
+        <h1>{installation.name}</h1>
+        <InstallationActiveToggle id={installation.id} active={installation.active} />
       </div>
-      {machine.category && <div className="crumbs">{machine.category}</div>}
+      {installation.category && <div className="crumbs">{installation.category}</div>}
 
       <div className="section-title">
         <span>Fiche</span>
         <span className="line" />
       </div>
-      <MachineEditForm machine={machine} />
+      <InstallationEditForm installation={installation} />
 
       <div className="section-title">
         <span>Pièces</span>
         <span className="line" />
       </div>
       <div className="grid">
-        {machine.pieces.length === 0 && <p className="empty">Aucune pièce.</p>}
-        {machine.pieces.map((p) => (
+        {installation.pieces.length === 0 && <p className="empty">Aucune pièce.</p>}
+        {installation.pieces.map((p) => (
           <Link key={p.id} href={`/pieces/${p.id}`} className="tile">
             {p.photoUrl && (
               // eslint-disable-next-line @next/next/no-img-element
@@ -54,7 +54,7 @@ export default async function MachinePage({ params }: { params: Promise<{ machin
         ))}
       </div>
       <div style={{ marginTop: 12 }}>
-        <AddPiece machineId={machine.id} />
+        <AddPiece installationId={installation.id} />
       </div>
 
       <div className="section-title">
@@ -62,8 +62,8 @@ export default async function MachinePage({ params }: { params: Promise<{ machin
         <span className="line" />
       </div>
       <div className="grid">
-        {machine.softwareItems.length === 0 && <p className="empty">Aucun software.</p>}
-        {machine.softwareItems.map((s) => (
+        {installation.softwareItems.length === 0 && <p className="empty">Aucun software.</p>}
+        {installation.softwareItems.map((s) => (
           <Link key={s.id} href={`/software/${s.id}`} className="tile">
             <div style={{ fontWeight: 600 }}>{s.name}</div>
             <span className="chev">›</span>
@@ -71,15 +71,15 @@ export default async function MachinePage({ params }: { params: Promise<{ machin
         ))}
       </div>
       <div style={{ marginTop: 12 }}>
-        <AddSoftware machineId={machine.id} />
+        <AddSoftware installationId={installation.id} />
       </div>
 
       <div className="danger-zone">
         <DeleteButton
-          kind="machine"
-          id={machine.id}
-          label="🗑️ Supprimer la machine"
-          confirmText="Envoyer cette machine à la corbeille ?"
+          kind="installation"
+          id={installation.id}
+          label="🗑️ Supprimer l'installation"
+          confirmText="Envoyer cette installation à la corbeille ?"
           redirectTo="/"
           className="btn ghost sm danger"
         />

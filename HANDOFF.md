@@ -8,7 +8,8 @@ début de session, à mettre à jour en fin de session.
 ## 1. Contexte
 
 Application indépendante pour Teddy (DTS Conception / Lazzeko / Kiavik) :
-centraliser les infos techniques sur les machines (cartes mères, imprimantes,
+centraliser les infos techniques sur les installations — une installation = une
+machine seule OU un atelier entier (cartes mères, imprimantes,
 laser, plasma…) — photos annotées, historique logiciel, notes rapides.
 **Usage mobile prioritaire (atelier).**
 
@@ -60,8 +61,9 @@ src/
 │   └── client.ts          # helpers fetch + uploadFile (composants client)
 ├── app/
 │   ├── (app)/             # pages protégées (layout = shell mobile + BottomNav)
-│   │   ├── page.tsx                       # liste machines
-│   │   ├── machines/[machineId]/page.tsx  # pièces + software
+│   │   ├── page.tsx                       # liste installations (actives)
+│   │   ├── installations/page.tsx         # toutes les installations
+│   │   ├── installations/[installationId]/ # pièces + software + fiche
 │   │   ├── pieces/[pieceId]/page.tsx      # photo annotée + points empilés
 │   │   ├── software/[softwareItemId]/     # timeline / changelog
 │   │   ├── journal/page.tsx               # ajout rapide + notes
@@ -77,12 +79,20 @@ src/
 **Invariant multi-tenant à ne jamais casser :** aucune lecture/écriture ne
 touche Prisma sans passer par `data.ts` / `mutations.ts`, qui scopent par
 `organizationId` (issu de la session). Les helpers de `mutations.ts` re-vérifient
-l'appartenance (`assertMachine`, `assertPiece`, …) AVANT toute mutation.
+l'appartenance (`assertInstallation`, `assertPiece`, …) AVANT toute mutation.
 
 ## 5. Modèle de données
 
-Voir `prisma/schema.prisma`. Modèles : `Organization`, `User`, `Machine`,
+Voir `prisma/schema.prisma`. Modèles : `Organization`, `User`, `Installation`,
 `Piece`, `Point`, `SoftwareItem`, `Entry`, `Media`.
+
+> **Renommage Machine → Installation** : le concept de haut niveau s'appelle
+> désormais « Installation » (une machine seule OU un atelier entier). Pour
+> éviter toute migration de données, le modèle Prisma `Installation` est **mappé
+> sur la table historique `Machine`** (`@@map("Machine")`), et les FK gardent le
+> nom de colonne `machineId` (`@map`). Donc : côté code = `Installation` /
+> `installationId` ; côté base = table `Machine` / colonne `machineId`. Le champ
+> `machineRef` (« référence machine ») est un attribut, il garde son nom.
 
 - Soft delete partout via `deletedAt` (corbeille + restauration + purge).
 - `Entry.shareToken` unique, généré à l'activation du partage.
@@ -99,8 +109,8 @@ Voir `prisma/schema.prisma`. Modèles : `Organization`, `User`, `Machine`,
 | `POST /api/auth/login`         | login → cookie session                      |
 | `POST /api/auth/logout`        | logout                                      |
 | `GET  /api/health`             | healthcheck (public)                        |
-| `POST /api/machines`           | créer machine                               |
-| `PATCH/DELETE /api/machines/[id]` | éditer / soft delete                     |
+| `POST /api/installations`      | créer installation                          |
+| `PATCH/DELETE /api/installations/[id]` | éditer / soft delete                |
 | `POST /api/pieces`             | créer pièce (photoUrl optionnel)            |
 | `PATCH/DELETE /api/pieces/[id]`| éditer (dont photoUrl) / soft delete        |
 | `POST /api/points`             | créer point (x,y optionnels)                |
@@ -201,7 +211,7 @@ sur GitHub ; **déploiement Coolify en cours** (relancé côté Teddy).
 
 - Scaffold Next.js + Prisma complet, schéma + migration `init` committée.
 - Auth (login/logout/middleware), seed org+user.
-- CRUD Machines / Pièces / Points / Software / Entries.
+- CRUD Installations / Pièces / Points / Software / Entries.
 - Photo annotée avec placement de points (coords relatives) + points libres.
 - Historique empilé par point ; « Corriger » vs « Ajouter une info » distincts.
 - **Vue pièce compacte (mobile)** : points **repliables** (repliés par défaut :
@@ -215,10 +225,15 @@ sur GitHub ; **déploiement Coolify en cours** (relancé côté Teddy).
   la photo annotée). Corrige aussi l'aperçu du composer qui s'affichait en pleine
   taille (les vignettes font 74px, classe `.media-thumbs`). Vérifié mobile avec
   une photo 12 Mpx (vignette, lightbox contain, pinch 1→4.3×, fermeture).
-- **Machine : champs** marque / modèle / réf. machine / réf. client (`MachineEditForm`,
-  fiche éditable) + **statut `active`** (`MachineActiveToggle`). La vue principale
-  (`/`) n'affiche que les machines actives ; les autres via `/machines`
-  (« Toutes les machines »), avec bascule active/inactive.
+- **Installation (ex-Machine) : champs** marque / modèle / réf. machine / réf.
+  client (`InstallationEditForm`, fiche éditable) + **statut `active`**
+  (`InstallationActiveToggle`). La vue principale (`/`) n'affiche que les
+  installations actives ; les autres via `/installations` (« Toutes les
+  installations »), avec bascule active/inactive.
+- **Concept générique** : « Installation » représente une machine seule OU une
+  infra/atelier. Évolution prévue (plus tard) : photo d'ensemble annotée au
+  niveau installation, dont les points renvoient vers une Pièce ou portent une
+  info libre.
 - **Accordéon des points** (`PointsAccordion`) : un seul point ouvert à la fois ;
   `CollapsiblePoint` est désormais contrôlé (open/onToggle).
 - **Boutons Supprimer discrets** partout (`btn ghost sm/xs danger`, `.danger-zone`).

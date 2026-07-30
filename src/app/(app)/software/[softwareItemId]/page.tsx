@@ -15,8 +15,8 @@ export default async function SoftwarePage({ params }: { params: Promise<{ softw
   return (
     <>
       <div className="topbar">
-        <Link href={`/machines/${item.machineId}`} className="back">
-          ‹ {item.machine.name}
+        <Link href={`/installations/${item.installationId}`} className="back">
+          ‹ {item.installation.name}
         </Link>
       </div>
       <div className="topbar">
@@ -47,7 +47,7 @@ export default async function SoftwarePage({ params }: { params: Promise<{ softw
         id={item.id}
         label="🗑️ Supprimer ce software"
         confirmText="Envoyer à la corbeille ?"
-        redirectTo={`/machines/${item.machineId}`}
+        redirectTo={`/installations/${item.installationId}`}
         className="btn danger"
       />
     </>

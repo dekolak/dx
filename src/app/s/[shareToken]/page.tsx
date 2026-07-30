@@ -20,9 +20,9 @@ export default async function SharedEntryPage({ params }: { params: Promise<{ sh
 
   // Contexte lisible selon le rattachement de l'entrée.
   let context: string | null = null;
-  if (entry.point) context = `${entry.point.piece.machine.name} · ${entry.point.piece.name} · Point ${entry.point.num}`;
-  else if (entry.softwareItem) context = `${entry.softwareItem.machine.name} · ${entry.softwareItem.name}`;
-  else if (entry.linkedPiece) context = `${entry.linkedPiece.machine.name} · ${entry.linkedPiece.name}`;
+  if (entry.point) context = `${entry.point.piece.installation.name} · ${entry.point.piece.name} · Point ${entry.point.num}`;
+  else if (entry.softwareItem) context = `${entry.softwareItem.installation.name} · ${entry.softwareItem.name}`;
+  else if (entry.linkedPiece) context = `${entry.linkedPiece.installation.name} · ${entry.linkedPiece.name}`;
 
   return (
     <div className="share-wrap">

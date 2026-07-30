@@ -1,11 +1,11 @@
 import Link from "next/link";
-import { listMachines } from "@/lib/data";
-import { MachineActiveToggle } from "@/components/MachineActiveToggle";
+import { listInstallations } from "@/lib/data";
+import { InstallationActiveToggle } from "@/components/InstallationActiveToggle";
 
 export const dynamic = "force-dynamic";
 
-export default async function AllMachinesPage() {
-  const machines = await listMachines({ includeInactive: true });
+export default async function AllInstallationsPage() {
+  const installations = await listInstallations({ includeInactive: true });
 
   return (
     <>
@@ -15,17 +15,17 @@ export default async function AllMachinesPage() {
         </Link>
       </div>
       <div className="topbar">
-        <h1>Toutes les machines</h1>
+        <h1>Toutes les installations</h1>
       </div>
       <p className="hint">
-        Marquez comme « active » les machines utilisées au quotidien : seules celles-ci apparaissent dans la vue
+        Marquez comme « active » les installations utilisées au quotidien : seules celles-ci apparaissent dans la vue
         principale.
       </p>
 
       <div className="grid">
-        {machines.length === 0 && <p className="empty">Aucune machine.</p>}
-        {machines.map((m) => (
-          <Link key={m.id} href={`/machines/${m.id}`} className={`tile ${m.active ? "" : "tile-muted"}`}>
+        {installations.length === 0 && <p className="empty">Aucune installation.</p>}
+        {installations.map((m) => (
+          <Link key={m.id} href={`/installations/${m.id}`} className={`tile ${m.active ? "" : "tile-muted"}`}>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontWeight: 600, fontSize: 16 }}>{m.name}</div>
               <div className="sub">
@@ -33,7 +33,7 @@ export default async function AllMachinesPage() {
                 {m._count.pieces} pièce{m._count.pieces > 1 ? "s" : ""} · {m._count.softwareItems} software
               </div>
             </div>
-            <MachineActiveToggle id={m.id} active={m.active} />
+            <InstallationActiveToggle id={m.id} active={m.active} />
             <span className="chev">›</span>
           </Link>
         ))}

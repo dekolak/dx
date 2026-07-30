@@ -3,7 +3,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/client";
 
-type Machine = {
+type Installation = {
   id: string;
   name: string;
   category: string | null;
@@ -13,7 +13,7 @@ type Machine = {
   clientRef: string | null;
 };
 
-const FIELDS: { key: keyof Omit<Machine, "id">; label: string; placeholder?: string }[] = [
+const FIELDS: { key: keyof Omit<Installation, "id">; label: string; placeholder?: string }[] = [
   { key: "name", label: "Nom" },
   { key: "category", label: "Catégorie", placeholder: "ex : Imprimante UV" },
   { key: "brand", label: "Marque" },
@@ -22,28 +22,28 @@ const FIELDS: { key: keyof Omit<Machine, "id">; label: string; placeholder?: str
   { key: "clientRef", label: "Référence client" },
 ];
 
-// Fiche machine : affichage des infos + édition (nom, catégorie, marque, modèle,
-// références). Repliée par défaut.
-export function MachineEditForm({ machine }: { machine: Machine }) {
+// Fiche installation : affichage des infos + édition (nom, catégorie, marque,
+// modèle, références). Repliée par défaut.
+export function InstallationEditForm({ installation }: { installation: Installation }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState(() => ({
-    name: machine.name,
-    category: machine.category ?? "",
-    brand: machine.brand ?? "",
-    model: machine.model ?? "",
-    machineRef: machine.machineRef ?? "",
-    clientRef: machine.clientRef ?? "",
+    name: installation.name,
+    category: installation.category ?? "",
+    brand: installation.brand ?? "",
+    model: installation.model ?? "",
+    machineRef: installation.machineRef ?? "",
+    clientRef: installation.clientRef ?? "",
   }));
   const [busy, setBusy] = useState(false);
 
-  const rows = FIELDS.filter((f) => f.key !== "name" && machine[f.key]);
+  const rows = FIELDS.filter((f) => f.key !== "name" && installation[f.key]);
 
   async function save() {
     if (!form.name.trim()) return;
     setBusy(true);
     try {
-      await api.updateMachine(machine.id, form);
+      await api.updateInstallation(installation.id, form);
       setOpen(false);
       router.refresh();
     } finally {
@@ -59,7 +59,7 @@ export function MachineEditForm({ machine }: { machine: Machine }) {
             {rows.map((f) => (
               <div key={f.key} className="info-row">
                 <dt>{f.label}</dt>
-                <dd>{machine[f.key]}</dd>
+                <dd>{installation[f.key]}</dd>
               </div>
             ))}
           </dl>

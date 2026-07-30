@@ -4,7 +4,7 @@ import { ServiceWorkerRegister } from "@/components/ServiceWorkerRegister";
 
 export const metadata: Metadata = {
   title: "DX — Référencement technique",
-  description: "Fiches techniques machines : pièces, software, journal.",
+  description: "Fiches techniques : installations, pièces, software, journal.",
   manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,

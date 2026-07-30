@@ -5,7 +5,7 @@ import { api } from "@/lib/client";
 
 const EMPTY = { name: "", category: "", brand: "", model: "", machineRef: "", clientRef: "" };
 
-export function AddMachine() {
+export function AddInstallation() {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState(EMPTY);
@@ -18,7 +18,7 @@ export function AddMachine() {
     if (!form.name.trim()) return;
     setBusy(true);
     try {
-      await api.createMachine(form);
+      await api.createInstallation(form);
       setForm(EMPTY);
       setOpen(false);
       router.refresh();
@@ -30,14 +30,14 @@ export function AddMachine() {
   if (!open) {
     return (
       <button className="btn primary" style={{ width: "100%" }} onClick={() => setOpen(true)}>
-        ＋ Nouvelle machine
+        ＋ Nouvelle installation
       </button>
     );
   }
   return (
     <div className="card">
       <label>Nom</label>
-      <input value={form.name} onChange={set("name")} placeholder="ex : DXonJet" autoFocus />
+      <input value={form.name} onChange={set("name")} placeholder="ex : DXonJet, Atelier découpe" autoFocus />
       <label>Catégorie (optionnel)</label>
       <input value={form.category} onChange={set("category")} placeholder="ex : Imprimante UV" />
       <label>Marque (optionnel)</label>
