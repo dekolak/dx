@@ -41,6 +41,20 @@ export async function authenticate(email: string, password: string): Promise<Ses
   return { userId: user.id, organizationId: user.organizationId, email: user.email };
 }
 
+// Attribut `Secure` du cookie de session. Par défaut : actif en production.
+// Override explicite via COOKIE_SECURE (utile TEMPORAIREMENT pour se connecter
+// en HTTP le temps de régler le HTTPS/Traefik). Un cookie `Secure` est refusé
+// par le navigateur sur une origine HTTP → boucle de redirection vers /login.
+//   COOKIE_SECURE=false → jamais Secure (HTTP OK)   ⚠️ à retirer une fois en HTTPS
+//   COOKIE_SECURE=true  → toujours Secure
+//   (absent)            → Secure si NODE_ENV=production
+function cookieSecure(): boolean {
+  const override = process.env.COOKIE_SECURE?.toLowerCase();
+  if (override === "false") return false;
+  if (override === "true") return true;
+  return process.env.NODE_ENV === "production";
+}
+
 export async function createSessionCookie(session: Session): Promise<void> {
   const token = await new SignJWT({ ...session })
     .setProtectedHeader({ alg: "HS256" })
@@ -51,7 +65,7 @@ export async function createSessionCookie(session: Session): Promise<void> {
   const store = await cookies();
   store.set(COOKIE_NAME, token, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
+    secure: cookieSecure(),
     sameSite: "lax",
     path: "/",
     maxAge: SESSION_TTL_SECONDS,

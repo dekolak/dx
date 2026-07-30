@@ -131,6 +131,11 @@ stocke que l'URL publique de l'objet.
   signée en JWT (HS256, `SESSION_SECRET`) dans un cookie httpOnly (30 j).
 - `middleware.ts` vérifie la signature (edge) et redirige vers `/login` / renvoie
   401 sur `/api/*`.
+- **Cookie `Secure`** : actif par défaut en production (`cookieSecure()` dans
+  `lib/auth.ts`). Un cookie `Secure` est refusé par le navigateur en HTTP → la
+  session n'est pas conservée → boucle de redirection vers `/login`. Override
+  temporaire : `COOKIE_SECURE=false` (le temps de brancher le HTTPS/Traefik),
+  **à retirer une fois en HTTPS**. `COOKIE_SECURE=true` force l'inverse.
 - Mono-user aujourd'hui (seed = Teddy) mais la structure accueille déjà
   plusieurs `User` par `Organization` (champ `role`). **Ne jamais coder en dur
   un utilisateur unique** dans la logique de requête.
