@@ -162,9 +162,21 @@ npm run db:seed        # crée org + user (SEED_* dans .env)
 docker compose up -d   # Postgres local
 ```
 
+### Sessions Claude Code on the web
+
+Un hook `SessionStart` (`.claude/hooks/session-start.sh`, enregistré dans
+`.claude/settings.json`) prépare automatiquement l'environnement des sessions
+web (uniquement en distant, `CLAUDE_CODE_REMOTE=true`) : `npm install`, démarrage
+de PostgreSQL, création + migration de la base `dx`, seed, puis export de
+`DATABASE_URL` / `SESSION_SECRET` / `SEED_*` pour la session. Idempotent.
+En local, on continue avec `docker compose up -d` + `.env`.
+
 ## 11. État actuel (au 2026-07-30)
 
-**Fait & validé** (build OK, typecheck OK, smoke-test API end-to-end OK) :
+**Déploiement :** PR #1 **mergée** dans `main` ; `main` = **branche par défaut**
+sur GitHub ; **déploiement Coolify en cours** (relancé côté Teddy).
+
+**Fait & validé** (build OK, typecheck OK, lint OK, smoke-test API end-to-end OK) :
 
 - Scaffold Next.js + Prisma complet, schéma + migration `init` committée.
 - Auth (login/logout/middleware), seed org+user.
@@ -177,13 +189,18 @@ docker compose up -d   # Postgres local
 - Upload média présigné OVH (code prêt ; non testé contre un vrai bucket).
 - PWA : manifest + service worker + icône SVG.
 - Dockerfile + entrypoint + docker-compose + healthcheck.
+- Doc déploiement `docs/COOLIFY.md` + self-test `scripts/test-upload.mjs`.
+- Hook `SessionStart` pour les sessions web (voir §10).
 
 **À faire / pistes :**
 
+- **Config Coolify complète** (variables d'env + service Postgres) à saisir dans
+  l'interface Coolify — côté Teddy, guide prêt dans `docs/COOLIFY.md`.
+
 - **Tester l'upload contre un vrai bucket OVH** — flux presign→PUT→URL publique
-  codé mais **non exécuté contre OVH** (aucune clé fournie à ce stade). Lancer
-  `node scripts/test-upload.mjs` avec les `S3_*` définies, puis un upload réel
-  dans l'app pour valider le CORS navigateur. Cf. `docs/COOLIFY.md` §3.
+  codé mais **non exécuté contre OVH** (en attente des clés OVH côté Teddy).
+  Lancer `node scripts/test-upload.mjs` avec les `S3_*` définies, puis un upload
+  réel dans l'app pour valider le CORS navigateur. Cf. `docs/COOLIFY.md` §3.
 - Icônes PNG (192/512) en complément du SVG si un navigateur refuse le SVG à
   l'installation PWA.
 - Compression/redimensionnement média côté client avant upload (perf mobile).
