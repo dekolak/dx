@@ -3,7 +3,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const ITEMS = [
-  { href: "/", label: "Machines", icon: "🛠️", match: (p: string) => p === "/" || p.startsWith("/machines") || p.startsWith("/pieces") || p.startsWith("/software") },
+  { href: "/", label: "Installations", icon: "🛠️", match: (p: string) => p === "/" || p.startsWith("/installations") || p.startsWith("/pieces") || p.startsWith("/software") },
   { href: "/journal", label: "Journal", icon: "📓", match: (p: string) => p.startsWith("/journal") },
   { href: "/trash", label: "Corbeille", icon: "🗑️", match: (p: string) => p.startsWith("/trash") },
 ];

@@ -3,7 +3,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/client";
 
-export function AddSoftware({ machineId }: { machineId: string }) {
+export function AddSoftware({ installationId }: { installationId: string }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
@@ -13,7 +13,7 @@ export function AddSoftware({ machineId }: { machineId: string }) {
     if (!name.trim()) return;
     setBusy(true);
     try {
-      await api.createSoftware({ machineId, name });
+      await api.createSoftware({ installationId, name });
       setName("");
       setOpen(false);
       router.refresh();

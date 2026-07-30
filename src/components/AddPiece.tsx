@@ -3,7 +3,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { api, uploadFile, type Media } from "@/lib/client";
 
-export function AddPiece({ machineId }: { machineId: string }) {
+export function AddPiece({ installationId }: { installationId: string }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
@@ -25,7 +25,7 @@ export function AddPiece({ machineId }: { machineId: string }) {
     if (!name.trim()) return;
     setBusy(true);
     try {
-      await api.createPiece({ machineId, name, category: category || undefined, photoUrl: photo?.url });
+      await api.createPiece({ installationId, name, category: category || undefined, photoUrl: photo?.url });
       setName("");
       setCategory("");
       setPhoto(null);

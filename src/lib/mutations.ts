@@ -11,27 +11,27 @@ import { deleteMediaByUrl } from "@/lib/storage";
 
 // --- helpers d'appartenance -------------------------------------------------
 
-async function assertMachine(orgId: string, machineId: string) {
-  const m = await prisma.machine.findFirst({ where: { id: machineId, organizationId: orgId } });
-  if (!m) throw new NotFoundError("Machine introuvable");
+async function assertInstallation(orgId: string, installationId: string) {
+  const m = await prisma.installation.findFirst({ where: { id: installationId, organizationId: orgId } });
+  if (!m) throw new NotFoundError("Installation introuvable");
   return m;
 }
 
 async function assertPiece(orgId: string, pieceId: string) {
-  const p = await prisma.piece.findFirst({ where: { id: pieceId, machine: { organizationId: orgId } } });
+  const p = await prisma.piece.findFirst({ where: { id: pieceId, installation: { organizationId: orgId } } });
   if (!p) throw new NotFoundError("Pièce introuvable");
   return p;
 }
 
 async function assertPoint(orgId: string, pointId: string) {
-  const p = await prisma.point.findFirst({ where: { id: pointId, piece: { machine: { organizationId: orgId } } } });
+  const p = await prisma.point.findFirst({ where: { id: pointId, piece: { installation: { organizationId: orgId } } } });
   if (!p) throw new NotFoundError("Point introuvable");
   return p;
 }
 
 async function assertSoftware(orgId: string, softwareItemId: string) {
   const s = await prisma.softwareItem.findFirst({
-    where: { id: softwareItemId, machine: { organizationId: orgId } },
+    where: { id: softwareItemId, installation: { organizationId: orgId } },
   });
   if (!s) throw new NotFoundError("Software introuvable");
   return s;
@@ -48,14 +48,14 @@ function nonEmpty(value: unknown, field: string): string {
   return value.trim();
 }
 
-// --- Machines ---------------------------------------------------------------
+// --- Installations ----------------------------------------------------------
 
 // Petit helper : chaîne optionnelle nettoyée (null si vide).
 function optStr(v: unknown): string | null {
   return typeof v === "string" && v.trim() ? v.trim() : null;
 }
 
-type MachineInput = {
+type InstallationInput = {
   name?: unknown;
   category?: unknown;
   brand?: unknown;
@@ -65,9 +65,9 @@ type MachineInput = {
   active?: unknown;
 };
 
-export async function createMachine(input: MachineInput) {
+export async function createInstallation(input: InstallationInput) {
   const organizationId = await requireOrgId();
-  return prisma.machine.create({
+  return prisma.installation.create({
     data: {
       organizationId,
       name: nonEmpty(input.name, "name"),
@@ -81,10 +81,10 @@ export async function createMachine(input: MachineInput) {
   });
 }
 
-export async function updateMachine(id: string, input: MachineInput) {
+export async function updateInstallation(id: string, input: InstallationInput) {
   const organizationId = await requireOrgId();
-  await assertMachine(organizationId, id);
-  return prisma.machine.update({
+  await assertInstallation(organizationId, id);
+  return prisma.installation.update({
     where: { id },
     data: {
       ...(input.name !== undefined ? { name: nonEmpty(input.name, "name") } : {}),
@@ -100,13 +100,13 @@ export async function updateMachine(id: string, input: MachineInput) {
 
 // --- Pièces -----------------------------------------------------------------
 
-export async function createPiece(input: { machineId?: unknown; name?: unknown; category?: unknown; photoUrl?: unknown }) {
+export async function createPiece(input: { installationId?: unknown; name?: unknown; category?: unknown; photoUrl?: unknown }) {
   const organizationId = await requireOrgId();
-  const machineId = nonEmpty(input.machineId, "machineId");
-  await assertMachine(organizationId, machineId);
+  const installationId = nonEmpty(input.installationId, "installationId");
+  await assertInstallation(organizationId, installationId);
   return prisma.piece.create({
     data: {
-      machineId,
+      installationId,
       name: nonEmpty(input.name, "name"),
       category: typeof input.category === "string" && input.category.trim() ? input.category.trim() : null,
       photoUrl: typeof input.photoUrl === "string" && input.photoUrl.trim() ? input.photoUrl.trim() : null,
@@ -160,11 +160,11 @@ export async function updatePoint(id: string, input: { x?: unknown; y?: unknown;
 
 // --- Software ---------------------------------------------------------------
 
-export async function createSoftwareItem(input: { machineId?: unknown; name?: unknown }) {
+export async function createSoftwareItem(input: { installationId?: unknown; name?: unknown }) {
   const organizationId = await requireOrgId();
-  const machineId = nonEmpty(input.machineId, "machineId");
-  await assertMachine(organizationId, machineId);
-  return prisma.softwareItem.create({ data: { machineId, name: nonEmpty(input.name, "name") } });
+  const installationId = nonEmpty(input.installationId, "installationId");
+  await assertInstallation(organizationId, installationId);
+  return prisma.softwareItem.create({ data: { installationId, name: nonEmpty(input.name, "name") } });
 }
 
 // --- Entrées (le bloc central) ----------------------------------------------
@@ -266,10 +266,10 @@ export async function setEntryShareable(id: string, shareable: boolean) {
 
 // --- Soft delete / restore / purge ------------------------------------------
 
-type Kind = "machine" | "piece" | "point" | "software" | "entry";
+type Kind = "installation" | "piece" | "point" | "software" | "entry";
 
 const assertByKind: Record<Kind, (org: string, id: string) => Promise<unknown>> = {
-  machine: assertMachine,
+  installation: assertInstallation,
   piece: assertPiece,
   point: assertPoint,
   software: assertSoftware,
@@ -284,7 +284,7 @@ type SoftDeletable = {
 };
 
 const modelByKind: Record<Kind, () => SoftDeletable> = {
-  machine: () => prisma.machine as unknown as SoftDeletable,
+  installation: () => prisma.installation as unknown as SoftDeletable,
   piece: () => prisma.piece as unknown as SoftDeletable,
   point: () => prisma.point as unknown as SoftDeletable,
   software: () => prisma.softwareItem as unknown as SoftDeletable,
@@ -318,7 +318,7 @@ export async function purge(kind: Kind, id: string) {
           ? { entry: { softwareItemId: id } }
           : kind === "piece"
             ? { entry: { OR: [{ point: { pieceId: id } }, { linkedPieceId: id }] } }
-            : { entry: { point: { piece: { machineId: id } } } }; // machine (best-effort)
+            : { entry: { point: { piece: { installationId: id } } } }; // installation (best-effort)
 
   const media = await prisma.media.findMany({ where: mediaWhere, select: { url: true } });
   await Promise.allSettled(media.map((m) => deleteMediaByUrl(m.url)));

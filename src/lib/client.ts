@@ -17,11 +17,11 @@ async function req<T>(url: string, method: string, body?: unknown): Promise<T> {
 }
 
 export const api = {
-  createMachine: (b: { name: string; category?: string }) => req("/api/machines", "POST", b),
-  updateMachine: (id: string, b: Record<string, unknown>) => req(`/api/machines/${id}`, "PATCH", b),
-  deleteMachine: (id: string) => req(`/api/machines/${id}`, "DELETE"),
+  createInstallation: (b: { name: string; category?: string }) => req("/api/installations", "POST", b),
+  updateInstallation: (id: string, b: Record<string, unknown>) => req(`/api/installations/${id}`, "PATCH", b),
+  deleteInstallation: (id: string) => req(`/api/installations/${id}`, "DELETE"),
 
-  createPiece: (b: { machineId: string; name: string; category?: string; photoUrl?: string }) =>
+  createPiece: (b: { installationId: string; name: string; category?: string; photoUrl?: string }) =>
     req("/api/pieces", "POST", b),
   updatePiece: (id: string, b: Record<string, unknown>) => req(`/api/pieces/${id}`, "PATCH", b),
   deletePiece: (id: string) => req(`/api/pieces/${id}`, "DELETE"),
@@ -30,7 +30,7 @@ export const api = {
   updatePoint: (id: string, b: Record<string, unknown>) => req(`/api/points/${id}`, "PATCH", b),
   deletePoint: (id: string) => req(`/api/points/${id}`, "DELETE"),
 
-  createSoftware: (b: { machineId: string; name: string }) => req("/api/software", "POST", b),
+  createSoftware: (b: { installationId: string; name: string }) => req("/api/software", "POST", b),
   deleteSoftware: (id: string) => req(`/api/software/${id}`, "DELETE"),
 
   createEntry: (b: {

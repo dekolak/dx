@@ -18,8 +18,8 @@ export default async function PiecePage({ params }: { params: Promise<{ pieceId:
   return (
     <>
       <div className="topbar">
-        <Link href={`/machines/${piece.machineId}`} className="back">
-          ‹ {piece.machine.name}
+        <Link href={`/installations/${piece.installationId}`} className="back">
+          ‹ {piece.installation.name}
         </Link>
       </div>
       <div className="topbar">
@@ -51,7 +51,7 @@ export default async function PiecePage({ params }: { params: Promise<{ pieceId:
           id={piece.id}
           label="🗑️ Supprimer la pièce"
           confirmText="Envoyer cette pièce à la corbeille ?"
-          redirectTo={`/machines/${piece.machineId}`}
+          redirectTo={`/installations/${piece.installationId}`}
           className="btn ghost sm danger"
         />
       </div>

@@ -221,7 +221,7 @@ label {
   font-size: 14px;
 }
 
-/* Fiche machine : lignes label/valeur */
+/* Fiche installation : lignes label/valeur */
 .info-grid {
   margin: 0;
   display: grid;

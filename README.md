@@ -1,6 +1,6 @@
 # DX — App de référencement technique
 
-Fiches techniques machines pour l'atelier : **pièces, points annotés sur photo,
+Fiches techniques pour l'atelier : **installations, pièces, points annotés sur photo,
 historique logiciel, journal**. Mobile-first (PWA), pensé pour un usage rapide à
 l'atelier.
 
@@ -46,8 +46,8 @@ date + partage + soft delete. Deux actions distinctes :
 
 ## Fonctionnalités
 
-- Machines → Pièces → Points (placés sur photo annotée) → Entrées empilées
-- Software par machine (timeline / changelog)
+- Installations (machine seule ou atelier) → Pièces → Points (placés sur photo annotée) → Entrées empilées
+- Software par installation (timeline / changelog)
 - Journal : notes libres horodatées, lien optionnel vers une pièce
 - Partage public d'une entrée via `/s/[shareToken]` (sans login)
 - Soft delete + corbeille (restauration / purge définitive)

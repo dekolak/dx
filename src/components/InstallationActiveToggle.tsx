@@ -3,8 +3,8 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/client";
 
-// Bascule « active » d'une machine (vue principale) vs « autres ».
-export function MachineActiveToggle({
+// Bascule « active » d'une installation (vue principale) vs « autres ».
+export function InstallationActiveToggle({
   id,
   active,
   className = "btn xs",
@@ -21,7 +21,7 @@ export function MachineActiveToggle({
     e.stopPropagation();
     setBusy(true);
     try {
-      await api.updateMachine(id, { active: !active });
+      await api.updateInstallation(id, { active: !active });
       router.refresh();
     } finally {
       setBusy(false);
@@ -33,7 +33,7 @@ export function MachineActiveToggle({
       className={`${className} ${active ? "primary" : "ghost"}`}
       disabled={busy}
       onClick={toggle}
-      title={active ? "Machine active (dans la vue principale)" : "Machine hors vue principale"}
+      title={active ? "Installation active (dans la vue principale)" : "Installation hors vue principale"}
     >
       {active ? "★ Active" : "☆ Activer"}
     </button>
