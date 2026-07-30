@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import type { EntryData } from "@/components/EntryCard";
 import { EntryGallery } from "@/components/EntryGallery";
 import { EntryComposer } from "@/components/EntryComposer";
@@ -12,37 +12,35 @@ function snippet(text: string, n = 42) {
   return t.length > n ? `${t.slice(0, n)}…` : t;
 }
 
-// Un point repliable : replié par défaut (numéro + titre court + compteurs),
-// déplié au clic pour voir/éditer son contenu (galerie + ajout d'info + suppr).
-// S'ouvre automatiquement si l'ancre #point-<id> est ciblée (clic sur un marqueur
-// de la photo, ou point tout juste créé).
-export function CollapsiblePoint({ point, entries }: { point: PointData; entries: EntryData[] }) {
-  const [open, setOpen] = useState(false);
+// Un point repliable, CONTRÔLÉ par le parent (accordéon : un seul ouvert à la
+// fois). Replié : vignette + n° + titre court + compteurs. Déplié : galerie +
+// ajout d'info + suppression.
+export function CollapsiblePoint({
+  point,
+  entries,
+  open,
+  onToggle,
+}: {
+  point: PointData;
+  entries: EntryData[];
+  open: boolean;
+  onToggle: () => void;
+}) {
   const ref = useRef<HTMLElement>(null);
 
+  // Quand il s'ouvre, on le fait remonter dans la vue (utile sur mobile).
   useEffect(() => {
-    const anchor = `#point-${point.id}`;
-    const sync = () => {
-      if (window.location.hash === anchor) {
-        setOpen(true);
-        ref.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-      }
-    };
-    sync();
-    window.addEventListener("hashchange", sync);
-    return () => window.removeEventListener("hashchange", sync);
-  }, [point.id]);
+    if (open) ref.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }, [open]);
 
   const latest = entries[entries.length - 1];
   const photoCount = entries.reduce((n, e) => n + e.media.filter((m) => m.type === "photo").length, 0);
   const title = latest ? snippet(latest.text) || "(média)" : "Aucune info";
-  const thumb = entries
-    .flatMap((e) => e.media)
-    .find((m) => m.type === "photo");
+  const thumb = entries.flatMap((e) => e.media).find((m) => m.type === "photo");
 
   return (
     <section ref={ref} id={`point-${point.id}`} className="card point-card">
-      <button className="point-header" onClick={() => setOpen((v) => !v)} aria-expanded={open}>
+      <button className="point-header" onClick={onToggle} aria-expanded={open}>
         {thumb ? (
           <img className="point-thumb" src={thumb.url} alt="" loading="lazy" />
         ) : (
@@ -73,8 +71,9 @@ export function CollapsiblePoint({ point, entries }: { point: PointData; entries
             <DeleteButton
               kind="point"
               id={point.id}
-              label="🗑️ Supprimer le point"
+              label="🗑️"
               confirmText="Supprimer ce point (et son historique) ?"
+              className="btn ghost xs danger"
             />
           </div>
         </div>

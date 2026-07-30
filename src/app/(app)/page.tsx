@@ -1,12 +1,12 @@
 import Link from "next/link";
-import { listMachines } from "@/lib/data";
+import { listMachines, machineCounts } from "@/lib/data";
 import { AddMachine } from "@/components/AddMachine";
 import { LogoutButton } from "@/components/LogoutButton";
 
 export const dynamic = "force-dynamic";
 
 export default async function MachinesPage() {
-  const machines = await listMachines();
+  const [machines, counts] = await Promise.all([listMachines(), machineCounts()]);
 
   return (
     <>
@@ -16,7 +16,13 @@ export default async function MachinesPage() {
       </div>
 
       <div className="grid">
-        {machines.length === 0 && <p className="empty">Aucune machine. Ajoutez-en une pour commencer.</p>}
+        {machines.length === 0 && (
+          <p className="empty">
+            {counts.inactive > 0
+              ? "Aucune machine active. Marquez-en une comme active, ou voyez toutes les machines."
+              : "Aucune machine. Ajoutez-en une pour commencer."}
+          </p>
+        )}
         {machines.map((m) => (
           <Link key={m.id} href={`/machines/${m.id}`} className="tile">
             <div>
@@ -30,6 +36,18 @@ export default async function MachinesPage() {
           </Link>
         ))}
       </div>
+
+      {counts.inactive > 0 && (
+        <div style={{ marginTop: 12 }}>
+          <Link href="/machines" className="tile">
+            <div style={{ fontWeight: 600 }}>Toutes les machines</div>
+            <span className="sub" style={{ marginLeft: "auto" }}>
+              {counts.active + counts.inactive} dont {counts.inactive} hors vue
+            </span>
+            <span className="chev">›</span>
+          </Link>
+        </div>
+      )}
 
       <div style={{ marginTop: 16 }}>
         <AddMachine />

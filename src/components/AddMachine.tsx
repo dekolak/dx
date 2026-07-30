@@ -3,20 +3,23 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/client";
 
+const EMPTY = { name: "", category: "", brand: "", model: "", machineRef: "", clientRef: "" };
+
 export function AddMachine() {
   const router = useRouter();
   const [open, setOpen] = useState(false);
-  const [name, setName] = useState("");
-  const [category, setCategory] = useState("");
+  const [form, setForm] = useState(EMPTY);
   const [busy, setBusy] = useState(false);
 
+  const set = (k: keyof typeof EMPTY) => (e: React.ChangeEvent<HTMLInputElement>) =>
+    setForm((s) => ({ ...s, [k]: e.target.value }));
+
   async function submit() {
-    if (!name.trim()) return;
+    if (!form.name.trim()) return;
     setBusy(true);
     try {
-      await api.createMachine({ name, category: category || undefined });
-      setName("");
-      setCategory("");
+      await api.createMachine(form);
+      setForm(EMPTY);
       setOpen(false);
       router.refresh();
     } finally {
@@ -34,9 +37,17 @@ export function AddMachine() {
   return (
     <div className="card">
       <label>Nom</label>
-      <input value={name} onChange={(e) => setName(e.target.value)} placeholder="ex : DXonJet" autoFocus />
+      <input value={form.name} onChange={set("name")} placeholder="ex : DXonJet" autoFocus />
       <label>Catégorie (optionnel)</label>
-      <input value={category} onChange={(e) => setCategory(e.target.value)} placeholder="ex : Imprimante UV" />
+      <input value={form.category} onChange={set("category")} placeholder="ex : Imprimante UV" />
+      <label>Marque (optionnel)</label>
+      <input value={form.brand} onChange={set("brand")} placeholder="ex : Mimaki" />
+      <label>Modèle (optionnel)</label>
+      <input value={form.model} onChange={set("model")} placeholder="ex : UJV100-160" />
+      <label>Référence machine (optionnel)</label>
+      <input value={form.machineRef} onChange={set("machineRef")} placeholder="ex : n° de série" />
+      <label>Référence client (optionnel)</label>
+      <input value={form.clientRef} onChange={set("clientRef")} placeholder="ex : dossier client" />
       <div className="btn-row" style={{ marginTop: 12 }}>
         <button className="btn primary" disabled={busy} onClick={submit}>
           Créer

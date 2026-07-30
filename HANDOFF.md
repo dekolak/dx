@@ -209,6 +209,13 @@ sur GitHub ; **déploiement Coolify en cours** (relancé côté Teddy).
   via l'ancre `#point-<id>`), et **galerie de vignettes** par point — clic sur
   une vignette → modale de détail complet (réutilise `EntryCard`). Vérifié au
   viewport mobile (galerie, modale, pas de débordement horizontal).
+- **Machine : champs** marque / modèle / réf. machine / réf. client (`MachineEditForm`,
+  fiche éditable) + **statut `active`** (`MachineActiveToggle`). La vue principale
+  (`/`) n'affiche que les machines actives ; les autres via `/machines`
+  (« Toutes les machines »), avec bascule active/inactive.
+- **Accordéon des points** (`PointsAccordion`) : un seul point ouvert à la fois ;
+  `CollapsiblePoint` est désormais contrôlé (open/onToggle).
+- **Boutons Supprimer discrets** partout (`btn ghost sm/xs danger`, `.danger-zone`).
 - **Recadrage + compression des photos d'entrée** (`CropModal`, `lib/image.ts`) :
   éditeur de crop tactile à l'ajout d'une photo dans une entrée, puis resize
   (≤1600px) + JPEG côté client. Vérifié avec une photo 12 Mpx (3024×4032) :
