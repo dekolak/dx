@@ -228,6 +228,34 @@ export async function createPhotoEnsemble(input: { installationId?: unknown; url
   });
 }
 
+export async function updatePhotoEnsemble(id: string, input: { label?: unknown }) {
+  const organizationId = await requireOrgId();
+  await assertPhotoEnsemble(organizationId, id);
+  return prisma.photoEnsemble.update({
+    where: { id },
+    data: { ...(input.label !== undefined ? { label: optStr(input.label) } : {}) },
+  });
+}
+
+/** Réordonne les photos d'ensemble d'une installation (sortOrder = position). */
+export async function reorderPhotosEnsemble(input: { installationId?: unknown; orderedIds?: unknown }) {
+  const organizationId = await requireOrgId();
+  const installationId = nonEmpty(input.installationId, "installationId");
+  await assertInstallation(organizationId, installationId);
+  if (!Array.isArray(input.orderedIds)) throw new BadRequestError("orderedIds doit être un tableau");
+
+  // On ne réordonne QUE les photos qui appartiennent bien à cette installation.
+  const owned = await prisma.photoEnsemble.findMany({
+    where: { installationId, deletedAt: null },
+    select: { id: true },
+  });
+  const valid = new Set(owned.map((p) => p.id));
+  const ids = input.orderedIds.filter((x): x is string => typeof x === "string" && valid.has(x));
+
+  await prisma.$transaction(ids.map((id, i) => prisma.photoEnsemble.update({ where: { id }, data: { sortOrder: i } })));
+  return { ok: true, count: ids.length };
+}
+
 // --- Entrées (le bloc central) ----------------------------------------------
 
 type MediaInput = { url: string; type: "photo" | "video" };

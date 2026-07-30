@@ -35,6 +35,19 @@ export function OverviewAnnotator({
   // « Armé » : évite que le tap qui OUVRE le chooser (sous le doigt) ne clique
   // aussitôt un bouton du chooser via son click synthétique.
   const [armed, setArmed] = useState(false);
+  const [editingLabel, setEditingLabel] = useState(false);
+  const [labelValue, setLabelValue] = useState(label ?? "");
+
+  async function saveLabel() {
+    setBusy(true);
+    try {
+      await api.updatePhotoEnsemble(photoEnsembleId, { label: labelValue });
+      setEditingLabel(false);
+      router.refresh();
+    } finally {
+      setBusy(false);
+    }
+  }
 
   function markerFor(p: OverviewPoint): PhotoMarker {
     if (p.targetPiece) {
@@ -79,10 +92,39 @@ export function OverviewAnnotator({
   return (
     <div>
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-        <span style={{ fontWeight: 600, flex: 1 }}>{label || "Photo d’ensemble"}</span>
-        <button className="btn ghost xs danger" disabled={busy} onClick={deletePhoto}>
-          🗑️
-        </button>
+        {editingLabel ? (
+          <>
+            <input
+              value={labelValue}
+              onChange={(e) => setLabelValue(e.target.value)}
+              placeholder="ex : Vue de face"
+              autoFocus
+              style={{ flex: 1 }}
+            />
+            <button className="btn primary xs" disabled={busy} onClick={saveLabel}>
+              OK
+            </button>
+            <button className="btn ghost xs" disabled={busy} onClick={() => setEditingLabel(false)}>
+              ✕
+            </button>
+          </>
+        ) : (
+          <>
+            <button
+              className="reorder-label overview-photo-label"
+              style={{ flex: 1, textAlign: "left", background: "transparent", border: "none", color: "inherit", cursor: "pointer", padding: 0 }}
+              onClick={() => {
+                setLabelValue(label ?? "");
+                setEditingLabel(true);
+              }}
+            >
+              {label || "Photo d’ensemble"} <span style={{ color: "var(--muted)" }}>✎</span>
+            </button>
+            <button className="btn ghost xs danger" disabled={busy} onClick={deletePhoto}>
+              🗑️
+            </button>
+          </>
+        )}
       </div>
 
       <ZoomablePhoto photoUrl={photoUrl} markers={points.map(markerFor)} placing={placing} onPlace={onPlace} alt="Photo d’ensemble" />
