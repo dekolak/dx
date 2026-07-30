@@ -130,6 +130,12 @@ l'URL applicative `/api/media/<clé>` (champ `Media.url`).
 - **UPLOAD_DIR** : en prod, volume Docker persistant (ex. `/data/dx-uploads`,
   cf. `docs/COOLIFY.md` §3) ; en dev, dossier `.uploads` à la racine (gitignoré).
 - Limite de taille : `MAX_UPLOAD_BYTES` (défaut 50 Mo). Images + vidéos.
+- **Photos d'entrée : traitées côté client AVANT upload** (`MediaUploader` →
+  `CropModal` + `lib/image.ts`) : éditeur de **recadrage** (rectangle ajustable),
+  puis **redimensionnement** (plus grand côté ≤ 1600 px) + **compression JPEG**
+  (q≈0.82), décodage orienté EXIF. Les vidéos passent sans traitement.
+  ⚠️ La **photo principale annotée** (`AddPiece`, `PhotoAnnotator`) N'est PAS
+  traitée (pleine résolution conservée pour le zoom précis).
 - **Purge** : `deleteMediaByUrl` supprime le fichier sur disque.
 - ⚠️ Le volume DOIT être persistant, sinon les médias disparaissent au
   redéploiement. Penser à l'inclure dans les backups VPS.
@@ -203,6 +209,11 @@ sur GitHub ; **déploiement Coolify en cours** (relancé côté Teddy).
   via l'ancre `#point-<id>`), et **galerie de vignettes** par point — clic sur
   une vignette → modale de détail complet (réutilise `EntryCard`). Vérifié au
   viewport mobile (galerie, modale, pas de débordement horizontal).
+- **Recadrage + compression des photos d'entrée** (`CropModal`, `lib/image.ts`) :
+  éditeur de crop tactile à l'ajout d'une photo dans une entrée, puis resize
+  (≤1600px) + JPEG côté client. Vérifié avec une photo 12 Mpx (3024×4032) :
+  crop appliqué, sortie 1600px max JPEG, ~1.8 Mpx (÷6.9), affichée. Photo
+  principale annotée non traitée (pleine réso).
 - **Photo annotée zoomable (mobile)** dans `PhotoAnnotator` : pincer pour
   zoomer, glisser pour déplacer, double-tap pour (dé)zoomer, bouton reset. Les
   pastilles gardent une **taille écran constante** (contre-scale `1/zoom` via la
