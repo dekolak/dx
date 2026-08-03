@@ -1,0 +1,72 @@
+# Déploiement Coolify DERRIÈRE le Traefik du stack n8n (comme pose / bac-a-sable).
+#
+# Pourquoi ce fichier : l'app doit être sur le réseau externe
+# `n8n-compose_default` (là où ce Traefik écoute) pour être routée. Un
+# `docker network connect` manuel ne survit pas à un redéploiement (Coolify
+# recrée le conteneur). En déclarant le réseau externe ICI, Coolify rebranche
+# le conteneur à chaque déploiement — le rattachement devient permanent.
+#
+# ⚠️ MÉDIAS SUR DISQUE : dx stocke les fichiers uploadés sur le disque local
+# (voir UPLOAD_DIR / /api/media). Sans volume persistant, ils sont PERDUS à
+# chaque redéploiement. Le volume `dx_uploads` ci-dessous, monté sur
+# UPLOAD_DIR, les conserve d'un déploiement à l'autre.
+#
+# Utilisation dans Coolify :
+#   Type de ressource = « Docker Compose », fichier = docker-compose.coolify.yml
+#   Renseigner les variables (DATABASE_URL, SESSION_SECRET, COOKIE_SECURE,
+#   SEED_*, UPLOAD_DIR, MAX_UPLOAD_BYTES) dans les variables d'environnement
+#   Coolify. Garder le même DATABASE_URL qu'avant.
+#
+# Coolify attache aussi automatiquement SON réseau de gestion aux services
+# d'un déploiement Compose ; ce fichier ne fait qu'AJOUTER le réseau externe
+# du Traefik n8n.
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: "${DATABASE_URL}"
+      SESSION_SECRET: "${SESSION_SECRET}"
+      # Maintenant que le domaine est en HTTPS, laisser vide/true.
+      COOKIE_SECURE: "${COOKIE_SECURE:-true}"
+      # Seed du compte initial (upsert ; sans effet une fois le compte créé).
+      SEED_ORG_NAME: "${SEED_ORG_NAME:-}"
+      SEED_USER_EMAIL: "${SEED_USER_EMAIL:-}"
+      SEED_USER_PASSWORD: "${SEED_USER_PASSWORD:-}"
+      # Doit correspondre au point de montage du volume ci-dessous.
+      UPLOAD_DIR: "${UPLOAD_DIR:-/data/dx-uploads}"
+      MAX_UPLOAD_BYTES: "${MAX_UPLOAD_BYTES:-52428800}"
+    volumes:
+      # Médias persistants : survit aux redéploiements. Le chemin DOIT être
+      # identique à UPLOAD_DIR ci-dessus.
+      - dx_uploads:/data/dx-uploads
+    networks:
+      - default
+      - n8n_shared
+    labels:
+      # Mêmes labels que pose : Traefik du stack n8n, entrypoint websecure,
+      # certresolver mytlschallenge. `traefik.docker.network` indique par quel
+      # réseau Traefik joint le conteneur.
+      - "traefik.enable=true"
+      - "traefik.docker.network=n8n-compose_default"
+      - "traefik.http.routers.dx.rule=Host(`data.dekolak.fr`)"
+      - "traefik.http.routers.dx.entrypoints=websecure"
+      - "traefik.http.routers.dx.tls=true"
+      - "traefik.http.routers.dx.tls.certresolver=mytlschallenge"
+      - "traefik.http.services.dx.loadbalancer.server.port=3000"
+
+volumes:
+  # Volume nommé pour les médias uploadés (UPLOAD_DIR).
+  dx_uploads:
+
+networks:
+  default: {}
+  # Réseau Docker du stack n8n existant (Traefik y écoute déjà). Doit exister
+  # au moment du déploiement — géré par le compose n8n, pas par celui-ci.
+  # `external: true` = on ne le crée/détruit jamais depuis ce projet.
+  n8n_shared:
+    name: n8n-compose_default
+    external: true
