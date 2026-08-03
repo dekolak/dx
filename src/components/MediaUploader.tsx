@@ -48,12 +48,18 @@ export function MediaUploader({
           const processed = await cropImage(file);
           if (!processed) continue; // annulé pour ce fichier
           setBusy(true);
-          uploaded.push(await uploadFile(processed));
+          {
+            const m = await uploadFile(processed);
+            uploaded.push({ url: m.url, type: m.type as "photo" | "video" });
+          }
           setBusy(false);
         } else {
           // Vidéo (ou autre) : envoi direct, sans traitement.
           setBusy(true);
-          uploaded.push(await uploadFile(file));
+          {
+            const m = await uploadFile(file);
+            uploaded.push({ url: m.url, type: m.type as "photo" | "video" });
+          }
           setBusy(false);
         }
       }

@@ -168,14 +168,35 @@ model SoftwareItem {
   id             String    @id @default(cuid())
   installationId String    @map("machineId")
   name           String // ex: nom / version logiciel
+  description    String? // notice / infos générales (texte long)
   createdAt      DateTime  @default(now())
   deletedAt      DateTime?
 
-  installation Installation @relation(fields: [installationId], references: [id], onDelete: Cascade)
-  entries      Entry[] // changelog empilé
+  installation Installation      @relation(fields: [installationId], references: [id], onDelete: Cascade)
+  entries      Entry[] // changelog / notes empilées
+  versions     SoftwareVersion[] // fichiers de versions (historique conservé)
 
   @@index([installationId])
   @@index([deletedAt])
+}
+
+// Une version téléversée d'un logiciel : le fichier (firmware, .bin/.hex/.zip…),
+// sa référence, sa date. On garde l'historique (rollback) ; suppression manuelle
+// et définitive (le fichier disque est retiré avec).
+model SoftwareVersion {
+  id             String   @id @default(cuid())
+  softwareItemId String
+  version        String // référence saisie (ex : "v1.2.3", "2024-06 build 12")
+  fileUrl        String // /api/media/... (fichier sur disque)
+  fileName       String // nom d'origine du fichier
+  fileSize       Int? // octets
+  note           String? // ex : "corrige bug capteur"
+  isCurrent      Boolean  @default(false) // version actuellement en service
+  createdAt      DateTime @default(now()) // = date d'upload
+
+  softwareItem SoftwareItem @relation(fields: [softwareItemId], references: [id], onDelete: Cascade)
+
+  @@index([softwareItemId])
 }
 
 // ---------------------------------------------------------------------------

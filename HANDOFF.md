@@ -126,7 +126,9 @@ Voir `prisma/schema.prisma`. Modèles : `Organization`, `User`, `Installation`,
 | `POST /api/points`             | créer point (x,y optionnels)                |
 | `PATCH/DELETE /api/points/[id]`| repositionner / soft delete                 |
 | `POST /api/software`           | créer software item                         |
-| `DELETE /api/software/[id]`    | soft delete                                 |
+| `PATCH/DELETE /api/software/[id]` | éditer (nom/description) / soft delete    |
+| `POST /api/software-versions`  | ajouter une version (fichier)               |
+| `PATCH/DELETE /api/software-versions/[id]` | « en service » / suppr. définitive |
 | `POST /api/photos-ensemble`    | créer une photo d'ensemble                  |
 | `PATCH/DELETE /api/photos-ensemble/[id]` | libellé / soft delete             |
 | `POST /api/photos-ensemble/reorder` | réordonner les photos d'ensemble       |
@@ -320,6 +322,17 @@ Teddy.
   Le **PDF** liste sous chaque point ses liaisons (« Relié à : Carte alim ·
   Point 1 — nappe 24V »). Vérifié sur mobile (création, réciprocité, navigation,
   retrait) + rendu PDF.
+- **Software = gestionnaire de versions avec fichiers** : `SoftwareItem` a une
+  **description** longue (éditable) + des **versions** (`SoftwareVersion` :
+  fichier sur disque, référence, note, date, taille, `isCurrent`). Upload d'une
+  nouvelle version (l'upload accepte désormais tout type via `?kind=file`),
+  historique conservé, **téléchargement** de chaque version, marquage « en
+  service » (une seule), **suppression définitive** (avec confirmation + retrait
+  du fichier disque ; la purge software/installation nettoie aussi ces fichiers).
+  Le fil de **notes/changelog** (Entry) est conservé en plus. Routes
+  `POST /api/software-versions`, `PATCH/DELETE /api/software-versions/[id]`,
+  `PATCH /api/software/[id]`. Vérifié sur mobile (description, upload x2, en
+  service, téléchargement, suppression + fichier retiré).
 - Software timeline, Journal (ajout rapide + lien pièce optionnel).
 - Partage public `/s/[shareToken]` (testé sans cookie).
 - Soft delete + corbeille (restaurer / purger, purge = suppression fichier disque).

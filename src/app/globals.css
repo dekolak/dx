@@ -1100,3 +1100,58 @@ label {
   cursor: pointer;
   z-index: 1;
 }
+
+/* --- Software : description + versions --- */
+.software-desc {
+  margin: 0;
+  white-space: pre-wrap;
+  line-height: 1.55;
+}
+.version-card.current {
+  border-color: var(--ok);
+  box-shadow: 0 0 0 1px var(--ok) inset;
+}
+.version-head {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.version-pill {
+  background: var(--accent);
+  color: #fff;
+  font-weight: 700;
+}
+.current-pill {
+  background: var(--ok);
+  color: #04241a;
+  font-weight: 700;
+}
+.version-date {
+  margin-left: auto;
+  font-size: 12px;
+  color: var(--muted);
+}
+.version-note {
+  margin: 8px 0 0;
+  font-size: 13.5px;
+  line-height: 1.4;
+}
+.version-file {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 8px;
+  flex-wrap: wrap;
+}
+.version-download {
+  font-family: var(--mono, ui-monospace, monospace);
+  font-size: 13px;
+  color: var(--accent);
+  text-decoration: none;
+  word-break: break-all;
+}
+.version-size {
+  font-size: 12px;
+  color: var(--muted);
+}

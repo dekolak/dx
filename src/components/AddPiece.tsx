@@ -15,7 +15,8 @@ export function AddPiece({ installationId }: { installationId: string }) {
     if (!files?.[0]) return;
     setBusy(true);
     try {
-      setPhoto(await uploadFile(files[0]));
+      const m = await uploadFile(files[0]);
+      setPhoto({ url: m.url, type: m.type as "photo" | "video" });
     } finally {
       setBusy(false);
     }

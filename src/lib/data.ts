@@ -124,6 +124,7 @@ export async function getSoftwareItem(softwareItemId: string) {
     where: { id: softwareItemId, deletedAt: null, installation: { organizationId } },
     include: {
       installation: true,
+      versions: { orderBy: [{ isCurrent: "desc" }, { createdAt: "desc" }] },
       entries: { where: { deletedAt: null }, orderBy: { createdAt: "desc" }, include: entryInclude },
     },
   });
