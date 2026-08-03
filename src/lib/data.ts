@@ -10,6 +10,22 @@ export type EntryWithMedia = Awaited<ReturnType<typeof getEntry>>;
 
 const entryInclude = { media: { where: { deletedAt: null }, orderBy: { createdAt: "asc" } } } as const;
 
+// L'« autre bout » d'une liaison de repère : de quoi afficher la puce + naviguer.
+const linkedPointSelect = {
+  select: {
+    id: true,
+    num: true,
+    icon: true,
+    deletedAt: true,
+    piece: { select: { id: true, name: true, deletedAt: true } },
+  },
+} as const;
+// Liaisons d'un point, dans les deux sens (aPoint↔bPoint).
+const pointLinksInclude = {
+  linksA: { select: { id: true, label: true, bPoint: linkedPointSelect } },
+  linksB: { select: { id: true, label: true, aPoint: linkedPointSelect } },
+} as const;
+
 export async function listInstallations(opts?: { includeInactive?: boolean }) {
   const organizationId = await requireOrgId();
   return prisma.installation.findMany({
@@ -71,6 +87,31 @@ export async function getPiece(pieceId: string) {
             orderBy: { createdAt: "asc" },
             include: entryInclude,
           },
+          ...pointLinksInclude,
+        },
+      },
+    },
+  });
+}
+
+// Cibles possibles d'une liaison : tous les repères de PIÈCE de l'installation
+// (le connecteur d'en face peut être sur n'importe quelle carte de l'atelier).
+export async function getLinkTargets(installationId: string) {
+  const organizationId = await requireOrgId();
+  return prisma.piece.findMany({
+    where: { installationId, deletedAt: null, installation: { organizationId } },
+    orderBy: { name: "asc" },
+    select: {
+      id: true,
+      name: true,
+      points: {
+        where: { deletedAt: null },
+        orderBy: { num: "asc" },
+        select: {
+          id: true,
+          num: true,
+          icon: true,
+          entries: { where: { deletedAt: null }, orderBy: { createdAt: "asc" }, select: { text: true } },
         },
       },
     },
