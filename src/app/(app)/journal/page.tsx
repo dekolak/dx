@@ -1,12 +1,12 @@
-import Link from "next/link";
-import { listJournal, listPiecesForPicker } from "@/lib/data";
+import { listJournal, listJournalTargets } from "@/lib/data";
 import { JournalComposer } from "@/components/JournalComposer";
-import { EntryCard, type EntryData } from "@/components/EntryCard";
+import { JournalList } from "@/components/JournalList";
+import type { JournalEntry } from "@/components/JournalNote";
 
 export const dynamic = "force-dynamic";
 
 export default async function JournalPage() {
-  const [entries, pieces] = await Promise.all([listJournal(), listPiecesForPicker()]);
+  const [entries, targets] = await Promise.all([listJournal(), listJournalTargets()]);
 
   return (
     <>
@@ -14,29 +14,14 @@ export default async function JournalPage() {
         <h1>Journal</h1>
       </div>
 
-      <JournalComposer pieces={pieces} />
+      <JournalComposer targets={targets} />
 
       <div className="section-title">
         <span>Notes</span>
         <span className="line" />
       </div>
 
-      <div className="grid">
-        {entries.length === 0 && <p className="empty">Aucune note pour l’instant.</p>}
-        {entries.map((e) => (
-          <div key={e.id}>
-            {e.linkedPiece && (
-              <div className="crumbs" style={{ marginBottom: 4 }}>
-                🔗 Lié à{" "}
-                <Link href={`/pieces/${e.linkedPiece.id}`} style={{ color: "var(--accent)" }}>
-                  {e.linkedPiece.installation.name} — {e.linkedPiece.name}
-                </Link>
-              </div>
-            )}
-            <EntryCard entry={e as unknown as EntryData} />
-          </div>
-        ))}
-      </div>
+      <JournalList entries={entries as unknown as JournalEntry[]} targets={targets} />
     </>
   );
 }

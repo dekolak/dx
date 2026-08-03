@@ -136,6 +136,7 @@ Voir `prisma/schema.prisma`. Modèles : `Organization`, `User`, `Installation`,
 | `DELETE /api/point-links/[id]` | retirer une liaison                         |
 | `POST /api/entries`            | **Ajouter une info** (nouvelle entrée)      |
 | `PATCH /api/entries/[id]`      | **Corriger** (édition en place)             |
+| `POST /api/entries/[id]/link`  | (re)lier une note de journal (inst./pièce/logiciel) |
 | `DELETE /api/entries/[id]`     | soft delete                                 |
 | `POST /api/entries/[id]/share` | activer/désactiver partage                  |
 | `POST /api/trash/[kind]/[id]`  | restaurer                                   |
@@ -333,6 +334,15 @@ Teddy.
   `POST /api/software-versions`, `PATCH/DELETE /api/software-versions/[id]`,
   `PATCH /api/software/[id]`. Vérifié sur mobile (description, upload x2, en
   service, téléchargement, suppression + fichier retiré).
+- **Journal enrichi** : lien d'une note vers **installation / pièce / logiciel**
+  (au plus un ; `Entry.linkedInstallationId` / `linkedPieceId` /
+  `linkedSoftwareItemId`, `relinkJournalEntry` + `POST /api/entries/[id]/link`).
+  **Recherche** plein-texte + **filtres** (Toutes / Avec photo / Liées / Non
+  liées) côté client (`JournalList`). **Édition du lien** en place (« ✎ lien »)
+  et édition du texte (« Corriger » d'`EntryCard`, déjà là). Les **notes liées
+  s'affichent sur la fiche cible** (`LinkedJournalNotes` sur pièce /
+  installation / logiciel) — lien visible dans les deux sens. `listJournalTargets`
+  fournit les cibles groupées. Vérifié sur mobile.
 - Software timeline, Journal (ajout rapide + lien pièce optionnel).
 - Partage public `/s/[shareToken]` (testé sans cookie).
 - Soft delete + corbeille (restaurer / purger, purge = suppression fichier disque).

@@ -69,6 +69,7 @@ model Installation {
   pieces         Piece[]
   softwareItems  SoftwareItem[]
   photosEnsemble PhotoEnsemble[]
+  journalEntries Entry[]         @relation("InstallationJournal") // notes de journal liées
 
   @@index([organizationId])
   @@index([deletedAt])
@@ -172,9 +173,10 @@ model SoftwareItem {
   createdAt      DateTime  @default(now())
   deletedAt      DateTime?
 
-  installation Installation      @relation(fields: [installationId], references: [id], onDelete: Cascade)
-  entries      Entry[] // changelog / notes empilées
-  versions     SoftwareVersion[] // fichiers de versions (historique conservé)
+  installation   Installation      @relation(fields: [installationId], references: [id], onDelete: Cascade)
+  entries        Entry[] // changelog / notes empilées
+  versions       SoftwareVersion[] // fichiers de versions (historique conservé)
+  journalEntries Entry[]           @relation("SoftwareJournal") // notes de journal liées
 
   @@index([installationId])
   @@index([deletedAt])
@@ -217,19 +219,27 @@ model Entry {
   // Rattachement (au plus un des trois selon `type`).
   pointId        String?
   softwareItemId String?
-  linkedPieceId  String? // journal libre lié à une pièce (optionnel)
+  // Lien d'une note de journal (au plus UN des trois, optionnel) : pièce,
+  // installation, ou logiciel.
+  linkedPieceId        String?
+  linkedInstallationId String?
+  linkedSoftwareItemId String?
 
-  organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  point        Point?        @relation(fields: [pointId], references: [id], onDelete: Cascade)
-  softwareItem SoftwareItem? @relation(fields: [softwareItemId], references: [id], onDelete: Cascade)
-  linkedPiece  Piece?        @relation("PieceLinkedEntries", fields: [linkedPieceId], references: [id], onDelete: SetNull)
-  media        Media[]
+  organization      Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  point             Point?        @relation(fields: [pointId], references: [id], onDelete: Cascade)
+  softwareItem      SoftwareItem? @relation(fields: [softwareItemId], references: [id], onDelete: Cascade)
+  linkedPiece       Piece?        @relation("PieceLinkedEntries", fields: [linkedPieceId], references: [id], onDelete: SetNull)
+  linkedInstallation Installation? @relation("InstallationJournal", fields: [linkedInstallationId], references: [id], onDelete: SetNull)
+  linkedSoftware    SoftwareItem? @relation("SoftwareJournal", fields: [linkedSoftwareItemId], references: [id], onDelete: SetNull)
+  media             Media[]
 
   @@index([organizationId])
   @@index([type])
   @@index([pointId])
   @@index([softwareItemId])
   @@index([linkedPieceId])
+  @@index([linkedInstallationId])
+  @@index([linkedSoftwareItemId])
   @@index([deletedAt])
   @@index([createdAt])
 }
