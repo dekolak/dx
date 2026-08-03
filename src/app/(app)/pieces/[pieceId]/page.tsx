@@ -7,33 +7,9 @@ import { PointsAccordion } from "@/components/PointsAccordion";
 import type { LinkChip } from "@/components/CollapsiblePoint";
 import { DeleteButton } from "@/components/DeleteButton";
 import { pointPreview, snippet } from "@/lib/pointPreview";
+import { normalizePointLinks } from "@/lib/pointLinks";
 
 export const dynamic = "force-dynamic";
-
-// Normalise les liaisons d'un point (deux sens) en puces prêtes à afficher,
-// en écartant les repères / pièces supprimés.
-type PointWithLinks = Awaited<ReturnType<typeof getPiece>> extends infer T
-  ? T extends { points: (infer P)[] }
-    ? P
-    : never
-  : never;
-function linksOf(p: NonNullable<PointWithLinks>): LinkChip[] {
-  const raw = [
-    ...p.linksA.map((l) => ({ linkId: l.id, label: l.label, other: l.bPoint })),
-    ...p.linksB.map((l) => ({ linkId: l.id, label: l.label, other: l.aPoint })),
-  ];
-  return raw
-    .filter((r) => r.other && !r.other.deletedAt && r.other.piece && !r.other.piece.deletedAt)
-    .map((r) => ({
-      linkId: r.linkId,
-      label: r.label,
-      pointId: r.other.id,
-      num: r.other.num,
-      icon: r.other.icon,
-      pieceId: r.other.piece!.id,
-      pieceName: r.other.piece!.name,
-    }));
-}
 
 export default async function PiecePage({ params }: { params: Promise<{ pieceId: string }> }) {
   const { pieceId } = await params;
@@ -52,7 +28,7 @@ export default async function PiecePage({ params }: { params: Promise<{ pieceId:
     })),
   }));
 
-  const linksByPoint = new Map(piece.points.map((p) => [p.id, linksOf(p)]));
+  const linksByPoint = new Map(piece.points.map((p) => [p.id, normalizePointLinks(p) as LinkChip[]]));
 
   const markers = piece.points.map((p) => {
     const { title, meta, thumb } = pointPreview(p.entries as unknown as { text: string; media: { type: string; url: string }[] }[]);

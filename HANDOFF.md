@@ -317,7 +317,9 @@ Teddy.
   l'en-tête ; clic → navigue vers l'autre repère (`/pieces/<id>#point-<id>`).
   Routes `POST /api/point-links`, `DELETE /api/point-links/[id]` ; cibles via
   `getLinkTargets`. Réservé aux repères de pièce (pas les points d'ensemble).
-  Vérifié sur mobile (création, réciprocité, navigation, retrait).
+  Le **PDF** liste sous chaque point ses liaisons (« Relié à : Carte alim ·
+  Point 1 — nappe 24V »). Vérifié sur mobile (création, réciprocité, navigation,
+  retrait) + rendu PDF.
 - Software timeline, Journal (ajout rapide + lien pièce optionnel).
 - Partage public `/s/[shareToken]` (testé sans cookie).
 - Soft delete + corbeille (restaurer / purger, purge = suppression fichier disque).

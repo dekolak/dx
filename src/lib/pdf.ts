@@ -13,7 +13,8 @@ const ACCENT = "#4f8cff";
 
 type Media = { url: string; type: string };
 type Entry = { createdAt: Date | string; text: string; media: Media[] };
-type Point = { num: number; x: number | null; y: number | null; entries: Entry[] };
+type PointLinkRef = { pieceName: string; num: number; label: string | null };
+type Point = { num: number; x: number | null; y: number | null; entries: Entry[]; links?: PointLinkRef[] };
 export type PdfPiece = {
   name: string;
   category: string | null;
@@ -111,6 +112,20 @@ export async function buildPiecePdf(piece: PdfPiece): Promise<Buffer> {
     doc.font("Helvetica").fontSize(11).fillColor("#333").text(`${pt.x == null ? "  (libre)" : ""}  —  ${title}`);
     doc.x = left; // le `continued` a laissé le curseur avancé → on le remet à la marge
     doc.moveDown(0.25);
+
+    // Liaisons vers d'autres repères (connexion carte↔carte).
+    if (pt.links && pt.links.length > 0) {
+      for (const l of pt.links) {
+        ensureSpace(14);
+        const label = l.label ? ` — ${l.label}` : "";
+        doc
+          .font("Helvetica-Oblique")
+          .fontSize(9)
+          .fillColor(ACCENT)
+          .text(`Relié à : ${l.pieceName} · Point ${l.num}${label}`, left, doc.y, { width: contentW });
+      }
+      doc.moveDown(0.2);
+    }
 
     if (pt.entries.length === 0) {
       doc.font("Helvetica-Oblique").fontSize(9).fillColor("#999").text("Aucune info pour ce point.", left, doc.y, { width: contentW });
