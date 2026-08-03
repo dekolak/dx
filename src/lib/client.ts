@@ -32,6 +32,7 @@ export const api = {
     targetPieceId?: string;
     x?: number;
     y?: number;
+    icon?: string;
   }) => req("/api/points", "POST", b),
   updatePoint: (id: string, b: Record<string, unknown>) => req(`/api/points/${id}`, "PATCH", b),
   deletePoint: (id: string) => req(`/api/points/${id}`, "DELETE"),

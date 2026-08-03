@@ -6,7 +6,7 @@ import { AddPhotoEnsemble } from "@/components/AddPhotoEnsemble";
 import { OverviewReorder } from "@/components/OverviewReorder";
 
 type TargetPiece = { id: string; name: string; deletedAt: string | Date | null } | null;
-type OverviewPoint = { id: string; num: number; x: number | null; y: number | null; targetPiece: TargetPiece; entries: EntryData[] };
+type OverviewPoint = { id: string; num: number; x: number | null; y: number | null; icon?: string | null; targetPiece: TargetPiece; entries: EntryData[] };
 type Photo = { id: string; url: string; label: string | null; points: OverviewPoint[] };
 
 // Section « Vue d'ensemble » d'une installation : une ou plusieurs photos
@@ -38,7 +38,7 @@ export function OverviewSection({
               photoEnsembleId={photo.id}
               photoUrl={photo.url}
               label={photo.label}
-              points={photo.points.map((p) => ({ id: p.id, num: p.num, x: p.x, y: p.y, targetPiece: p.targetPiece }))}
+              points={photo.points.map((p) => ({ id: p.id, num: p.num, x: p.x, y: p.y, icon: p.icon, targetPiece: p.targetPiece }))}
               pieces={pieces}
             />
 
@@ -62,7 +62,7 @@ export function OverviewSection({
             )}
 
             {infos.length > 0 && (
-              <PointsAccordion items={infos.map((p) => ({ point: { id: p.id, num: p.num, x: p.x, y: p.y }, entries: p.entries }))} />
+              <PointsAccordion items={infos.map((p) => ({ point: { id: p.id, num: p.num, x: p.x, y: p.y, icon: p.icon }, entries: p.entries }))} />
             )}
           </div>
         );

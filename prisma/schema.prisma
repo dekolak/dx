@@ -125,6 +125,7 @@ model Point {
   x               Float? // position sur la photo, null si "point libre"/virtuel
   y               Float?
   num             Int
+  icon            String? // emoji facultatif (repère visuel : ⚠️ ⚡ 🔌 …), affiché sur la pastille dans l'app
   createdAt       DateTime  @default(now())
   deletedAt       DateTime?
 

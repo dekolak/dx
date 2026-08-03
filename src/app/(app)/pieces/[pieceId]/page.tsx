@@ -13,7 +13,7 @@ export default async function PiecePage({ params }: { params: Promise<{ pieceId:
   const piece = await getPiece(pieceId);
   if (!piece) notFound();
 
-  const markers = piece.points.map((p) => ({ id: p.id, num: p.num, x: p.x, y: p.y }));
+  const markers = piece.points.map((p) => ({ id: p.id, num: p.num, x: p.x, y: p.y, icon: p.icon }));
 
   return (
     <>
@@ -43,7 +43,7 @@ export default async function PiecePage({ params }: { params: Promise<{ pieceId:
 
       <PointsAccordion
         items={piece.points.map((point) => ({
-          point: { id: point.id, num: point.num, x: point.x, y: point.y },
+          point: { id: point.id, num: point.num, x: point.x, y: point.y, icon: point.icon },
           entries: point.entries as unknown as EntryData[],
         }))}
       />

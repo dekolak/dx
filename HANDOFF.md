@@ -288,6 +288,16 @@ Teddy.
   soient résolues depuis `node_modules` au runtime. Vérifié visuellement (build
   prod → PDF A4 2 pages rendu en PNG) sur une pièce réelle à 3 points + photos
   jointes : pastilles bien positionnées, titres et textes cadrés à la marge.
+- **Déplacer un point + icône par point** : sur la photo annotée (pièce ET
+  photo d'ensemble), bouton « ⇄ Déplacer » → on fait **glisser une pastille**
+  existante pour la repositionner (geste tactile maison dans `ZoomablePhoto`,
+  optimiste + `PATCH /api/points/[id]` {x,y} ; un simple tap ne déplace pas).
+  Chaque point peut recevoir une **icône** (emoji, champ `Point.icon`, set atelier
+  ⚠️⚡🔌🔧… + « aucune ») via le sélecteur dans l'accordéon du point : elle occupe
+  la pastille avec le **numéro en petit badge d'angle** (correspondance conservée
+  avec la liste et le PDF). Le PDF garde les pastilles numérotées (icône = repère
+  in-app). Vérifié sur viewport mobile avec de vrais gestes tactiles (glisser
+  persisté en base, tap sans déplacement, icône persistée + rendue).
 - Software timeline, Journal (ajout rapide + lien pièce optionnel).
 - Partage public `/s/[shareToken]` (testé sans cookie).
 - Soft delete + corbeille (restaurer / purger, purge = suppression fichier disque).

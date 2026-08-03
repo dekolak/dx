@@ -159,6 +159,7 @@ export async function createPoint(input: {
   targetPieceId?: unknown;
   x?: unknown;
   y?: unknown;
+  icon?: unknown;
 }) {
   const organizationId = await requireOrgId();
   const hasPiece = typeof input.pieceId === "string" && input.pieceId.trim();
@@ -169,12 +170,13 @@ export async function createPoint(input: {
 
   const x = typeof input.x === "number" ? input.x : null;
   const y = typeof input.y === "number" ? input.y : null;
+  const icon = normalizeIcon(input.icon);
 
   if (hasPiece) {
     const pieceId = String(input.pieceId).trim();
     await assertPiece(organizationId, pieceId);
     const max = await prisma.point.aggregate({ where: { pieceId }, _max: { num: true } });
-    return prisma.point.create({ data: { pieceId, num: (max._max.num ?? 0) + 1, x, y } });
+    return prisma.point.create({ data: { pieceId, num: (max._max.num ?? 0) + 1, x, y, icon } });
   }
 
   // Point sur une photo d'ensemble.
@@ -186,10 +188,17 @@ export async function createPoint(input: {
     await assertPiece(organizationId, targetPieceId); // le raccourci pointe vers une pièce de l'org
   }
   const max = await prisma.point.aggregate({ where: { photoEnsembleId }, _max: { num: true } });
-  return prisma.point.create({ data: { photoEnsembleId, targetPieceId, num: (max._max.num ?? 0) + 1, x, y } });
+  return prisma.point.create({ data: { photoEnsembleId, targetPieceId, num: (max._max.num ?? 0) + 1, x, y, icon } });
 }
 
-export async function updatePoint(id: string, input: { x?: unknown; y?: unknown; num?: unknown }) {
+// Normalise une icône : chaîne courte (emoji) ou null pour l'effacer.
+function normalizeIcon(v: unknown): string | null {
+  if (typeof v !== "string") return null;
+  const s = v.trim();
+  return s ? s.slice(0, 8) : null;
+}
+
+export async function updatePoint(id: string, input: { x?: unknown; y?: unknown; num?: unknown; icon?: unknown }) {
   const organizationId = await requireOrgId();
   await assertPoint(organizationId, id);
   return prisma.point.update({
@@ -198,6 +207,7 @@ export async function updatePoint(id: string, input: { x?: unknown; y?: unknown;
       ...(input.x !== undefined ? { x: typeof input.x === "number" ? input.x : null } : {}),
       ...(input.y !== undefined ? { y: typeof input.y === "number" ? input.y : null } : {}),
       ...(typeof input.num === "number" ? { num: input.num } : {}),
+      ...(input.icon !== undefined ? { icon: normalizeIcon(input.icon) } : {}),
     },
   });
 }
