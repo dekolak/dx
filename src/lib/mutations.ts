@@ -274,6 +274,76 @@ export async function createSoftwareItem(input: { installationId?: unknown; name
   return prisma.softwareItem.create({ data: { installationId, name: nonEmpty(input.name, "name") } });
 }
 
+export async function updateSoftwareItem(id: string, input: { name?: unknown; description?: unknown }) {
+  const organizationId = await requireOrgId();
+  await assertSoftware(organizationId, id);
+  return prisma.softwareItem.update({
+    where: { id },
+    data: {
+      ...(typeof input.name === "string" && input.name.trim() ? { name: input.name.trim() } : {}),
+      ...(input.description !== undefined
+        ? { description: typeof input.description === "string" && input.description.trim() ? input.description.trim() : null }
+        : {}),
+    },
+  });
+}
+
+// --- Versions de logiciel (fichiers) ----------------------------------------
+
+async function assertSoftwareVersion(orgId: string, id: string) {
+  const v = await prisma.softwareVersion.findFirst({
+    where: { id, softwareItem: { installation: { organizationId: orgId } } },
+  });
+  if (!v) throw new NotFoundError("Version introuvable");
+  return v;
+}
+
+export async function createSoftwareVersion(input: {
+  softwareItemId?: unknown;
+  version?: unknown;
+  fileUrl?: unknown;
+  fileName?: unknown;
+  fileSize?: unknown;
+  note?: unknown;
+}) {
+  const organizationId = await requireOrgId();
+  const softwareItemId = nonEmpty(input.softwareItemId, "softwareItemId");
+  await assertSoftware(organizationId, softwareItemId);
+  const fileUrl = nonEmpty(input.fileUrl, "fileUrl");
+  if (!fileUrl.startsWith("/api/media/")) throw new BadRequestError("fileUrl invalide");
+  return prisma.softwareVersion.create({
+    data: {
+      softwareItemId,
+      version: nonEmpty(input.version, "version").slice(0, 120),
+      fileUrl,
+      fileName: (typeof input.fileName === "string" ? input.fileName : "fichier").slice(0, 200),
+      fileSize: typeof input.fileSize === "number" && input.fileSize >= 0 ? Math.floor(input.fileSize) : null,
+      note: typeof input.note === "string" && input.note.trim() ? input.note.trim().slice(0, 500) : null,
+    },
+  });
+}
+
+// Marque (ou démarque) la version « en service » ; une seule à la fois.
+export async function setSoftwareVersionCurrent(id: string, current: boolean) {
+  const organizationId = await requireOrgId();
+  const v = await assertSoftwareVersion(organizationId, id);
+  if (!current) return prisma.softwareVersion.update({ where: { id }, data: { isCurrent: false } });
+  await prisma.$transaction([
+    prisma.softwareVersion.updateMany({ where: { softwareItemId: v.softwareItemId }, data: { isCurrent: false } }),
+    prisma.softwareVersion.update({ where: { id }, data: { isCurrent: true } }),
+  ]);
+  return { ok: true };
+}
+
+// Suppression DÉFINITIVE d'une version (+ retrait du fichier sur disque).
+export async function deleteSoftwareVersion(id: string) {
+  const organizationId = await requireOrgId();
+  const v = await assertSoftwareVersion(organizationId, id);
+  await prisma.softwareVersion.delete({ where: { id } });
+  await deleteMediaByUrl(v.fileUrl);
+  return { ok: true };
+}
+
 // --- Photos d'ensemble ------------------------------------------------------
 
 export async function createPhotoEnsemble(input: { installationId?: unknown; url?: unknown; label?: unknown }) {
@@ -481,6 +551,12 @@ export async function purge(kind: Kind, id: string) {
   if (kind === "photoEnsemble") {
     const pe = await prisma.photoEnsemble.findUnique({ where: { id }, select: { url: true } });
     if (pe?.url) extraFiles.push(pe.url); // le fichier de la photo d'ensemble lui-même
+  }
+  // Fichiers des versions de logiciel (supprimés avec le software ou l'installation).
+  if (kind === "software" || kind === "installation") {
+    const where = kind === "software" ? { softwareItemId: id } : { softwareItem: { installationId: id } };
+    const versions = await prisma.softwareVersion.findMany({ where, select: { fileUrl: true } });
+    extraFiles.push(...versions.map((v) => v.fileUrl));
   }
   await Promise.allSettled([...media.map((m) => m.url), ...extraFiles].map((u) => deleteMediaByUrl(u)));
 

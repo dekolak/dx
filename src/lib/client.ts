@@ -42,7 +42,20 @@ export const api = {
   deletePointLink: (id: string) => req(`/api/point-links/${id}`, "DELETE"),
 
   createSoftware: (b: { installationId: string; name: string }) => req("/api/software", "POST", b),
+  updateSoftware: (id: string, b: { name?: string; description?: string }) => req(`/api/software/${id}`, "PATCH", b),
   deleteSoftware: (id: string) => req(`/api/software/${id}`, "DELETE"),
+
+  createSoftwareVersion: (b: {
+    softwareItemId: string;
+    version: string;
+    fileUrl: string;
+    fileName: string;
+    fileSize?: number;
+    note?: string;
+  }) => req("/api/software-versions", "POST", b),
+  setSoftwareVersionCurrent: (id: string, current: boolean) =>
+    req(`/api/software-versions/${id}`, "PATCH", { current }),
+  deleteSoftwareVersion: (id: string) => req(`/api/software-versions/${id}`, "DELETE"),
 
   createPhotoEnsemble: (b: { installationId: string; url: string; label?: string }) =>
     req<{ id: string }>("/api/photos-ensemble", "POST", b),
@@ -69,13 +82,14 @@ export const api = {
 };
 
 /** Upload d'un fichier vers le disque local du serveur. Retourne le média. */
-export async function uploadFile(file: File): Promise<Media> {
-  const res = await fetch(`/api/upload?filename=${encodeURIComponent(file.name)}`, {
+export async function uploadFile(file: File, opts?: { kind?: "media" | "file" }): Promise<{ url: string; type: string }> {
+  const q = opts?.kind === "file" ? "&kind=file" : "";
+  const res = await fetch(`/api/upload?filename=${encodeURIComponent(file.name)}${q}`, {
     method: "POST",
     headers: { "Content-Type": file.type || "application/octet-stream" },
     body: file,
   });
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error((data as { error?: string }).error || "Échec de l'upload du média");
-  return { url: (data as Media).url, type: (data as Media).type };
+  if (!res.ok) throw new Error((data as { error?: string }).error || "Échec de l'upload du fichier");
+  return { url: (data as { url: string }).url, type: (data as { type: string }).type };
 }
