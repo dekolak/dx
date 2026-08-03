@@ -4,7 +4,16 @@ import { useRouter } from "next/navigation";
 import { api, uploadFile } from "@/lib/client";
 import { ZoomablePhoto, type PhotoMarker } from "@/components/ZoomablePhoto";
 
-type PointMarker = { id: string; num: number; x: number | null; y: number | null; icon?: string | null };
+type PointMarker = {
+  id: string;
+  num: number;
+  x: number | null;
+  y: number | null;
+  icon?: string | null;
+  title?: string;
+  meta?: string;
+  thumb?: string | null;
+};
 
 // Photo annotée d'une PIÈCE : réutilise ZoomablePhoto (zoom/pan/placement) et
 // ajoute la gestion de la photo (ajout/changement) et la création de points.

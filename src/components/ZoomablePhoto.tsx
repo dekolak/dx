@@ -9,6 +9,11 @@ export type PhotoMarker = {
   href: string; // "#point-<id>" (info) ou "/pieces/<id>" (raccourci)
   className?: string; // ex "shortcut"
   icon?: string | null; // emoji facultatif affiché dans la pastille
+  // Contenu de la bulle d'aperçu (au tap sur la pastille) :
+  title?: string; // dernière info / nom de la pièce
+  meta?: string; // ex "2 infos · 1 📷"
+  thumb?: string | null; // vignette photo
+  actionLabel?: string; // libellé du bouton (défaut « Détail › »)
 };
 
 const MIN_SCALE = 1;
@@ -44,6 +49,9 @@ export function ZoomablePhoto({
   // Positions provisoires pendant/après un glisser (optimiste, évite le clignotement
   // le temps que le serveur renvoie les nouvelles coordonnées).
   const [overrides, setOverrides] = useState<Record<string, { x: number; y: number }>>({});
+  // Bulle d'aperçu affichée sur l'image au tap d'une pastille.
+  const [bubble, setBubble] = useState<{ id: string; left: number; top: number; above: boolean } | null>(null);
+  const wrapRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const imgRef = useRef<HTMLImageElement>(null);
@@ -54,8 +62,27 @@ export function ZoomablePhoto({
 
   const tf = useRef({ scale: 1, tx: 0, ty: 0 });
   const pointers = useRef<Map<number, { x: number; y: number }>>(new Map());
-  const g = useRef({ startX: 0, startY: 0, startTime: 0, prevMidX: 0, prevMidY: 0, prevDist: 0, moved: false, pinched: false, onMarker: false, lastTapTime: 0, dragId: "" as string, dragPointerId: -1, dragX: 0, dragY: 0, dragMoved: false });
+  const g = useRef({ startX: 0, startY: 0, startTime: 0, prevMidX: 0, prevMidY: 0, prevDist: 0, moved: false, pinched: false, onMarker: false, lastTapTime: 0, dragId: "" as string, dragPointerId: -1, dragX: 0, dragY: 0, dragMoved: false, markerEl: null as HTMLElement | null });
   const rafId = useRef(0);
+
+  // En mode placer/déplacer, pas de bulle d'aperçu.
+  useEffect(() => {
+    if (placing || moving) setBubble(null);
+  }, [placing, moving]);
+
+  // Ouvre la bulle au-dessus (ou en dessous) de la pastille tapée.
+  function openBubble(el: HTMLElement, id: string) {
+    const wrap = wrapRef.current;
+    if (!wrap) return;
+    const m = el.getBoundingClientRect();
+    const w = wrap.getBoundingClientRect();
+    const cx = m.left + m.width / 2 - w.left;
+    const cy = m.top + m.height / 2 - w.top;
+    const half = 118;
+    const left = clamp(cx, half, Math.max(half, w.width - half));
+    const above = cy > 140;
+    setBubble({ id, left, top: above ? cy - 22 : cy + 22, above });
+  }
 
   const applyTransform = useCallback(() => {
     const c = contentRef.current;
@@ -143,9 +170,12 @@ export function ZoomablePhoto({
         return;
       }
       g.current.onMarker = true;
+      g.current.markerEl = markerEl;
       return;
     }
     g.current.onMarker = false;
+    g.current.markerEl = null;
+    setBubble(null); // tap hors pastille / début de pan → ferme la bulle
     stageRef.current?.setPointerCapture(e.pointerId);
     pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
     const pts = [...pointers.current.values()];
@@ -233,6 +263,10 @@ export function ZoomablePhoto({
     }
     if (g.current.onMarker) {
       g.current.onMarker = false;
+      // Tap sur une pastille (hors placer/déplacer) → bulle d'aperçu sur l'image.
+      if (!placingRef.current && !movingRef.current && g.current.markerEl) {
+        openBubble(g.current.markerEl, g.current.markerEl.dataset.pointId ?? "");
+      }
       return;
     }
     if (!pointers.current.has(e.pointerId)) return;
@@ -256,42 +290,74 @@ export function ZoomablePhoto({
       return o ? { ...p, x: o.x, y: o.y } : p;
     });
 
+  const activeMarker = bubble ? markers.find((m) => m.id === bubble.id) : null;
+
   return (
-    <div
-      ref={stageRef}
-      className={`annotator ${placing ? "placing" : ""} ${moving ? "moving" : ""}`}
-      onPointerDown={onPointerDown}
-      onPointerMove={onPointerMove}
-      onPointerUp={onPointerUp}
-      onPointerCancel={onPointerUp}
-    >
-      <div ref={contentRef} className="annotator-content">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img ref={imgRef} src={photoUrl} alt={alt} draggable={false} />
-        {placed.map((p) => (
-          <a
-            key={p.id}
-            data-point-id={p.id}
-            href={moving ? undefined : p.href}
-            onClick={moving ? (e) => e.preventDefault() : undefined}
-            className={`marker ${p.className ?? ""} ${p.icon ? "has-icon" : ""} ${moving ? "movable" : ""}`}
-            style={{ left: `${(p.x as number) * 100}%`, top: `${(p.y as number) * 100}%` }}
-          >
-            {p.icon ? (
-              <>
-                <span className="marker-glyph">{p.icon}</span>
-                <span className="marker-badge">{p.num}</span>
-              </>
-            ) : (
-              <span className="marker-glyph">{p.num}</span>
-            )}
-          </a>
-        ))}
+    <div ref={wrapRef} className="annotator-wrap">
+      <div
+        ref={stageRef}
+        className={`annotator ${placing ? "placing" : ""} ${moving ? "moving" : ""}`}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerUp}
+        onPointerCancel={onPointerUp}
+      >
+        <div ref={contentRef} className="annotator-content">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img ref={imgRef} src={photoUrl} alt={alt} draggable={false} />
+          {placed.map((p) => (
+            <a
+              key={p.id}
+              data-point-id={p.id}
+              href={p.href}
+              // La navigation passe par la bulle (bouton « Détail ») → on neutralise
+              // le clic direct de la pastille (tap = ouvrir la bulle).
+              onClick={(e) => e.preventDefault()}
+              className={`marker ${p.className ?? ""} ${p.icon ? "has-icon" : ""} ${moving ? "movable" : ""} ${
+                bubble?.id === p.id ? "active" : ""
+              }`}
+              style={{ left: `${(p.x as number) * 100}%`, top: `${(p.y as number) * 100}%` }}
+            >
+              {p.icon ? (
+                <>
+                  <span className="marker-glyph">{p.icon}</span>
+                  <span className="marker-badge">{p.num}</span>
+                </>
+              ) : (
+                <span className="marker-glyph">{p.num}</span>
+              )}
+            </a>
+          ))}
+        </div>
+        {zoomed && (
+          <button type="button" className="zoom-reset" onClick={resetZoom} aria-label="Réinitialiser le zoom">
+            ⟲
+          </button>
+        )}
       </div>
-      {zoomed && (
-        <button type="button" className="zoom-reset" onClick={resetZoom} aria-label="Réinitialiser le zoom">
-          ⟲
-        </button>
+
+      {bubble && activeMarker && (
+        <div
+          className={`marker-bubble ${bubble.above ? "above" : "below"}`}
+          style={{ left: bubble.left, top: bubble.top }}
+          role="dialog"
+        >
+          <button type="button" className="marker-bubble-close" onClick={() => setBubble(null)} aria-label="Fermer">
+            ✕
+          </button>
+          <div className="marker-bubble-head">
+            <span className={`marker-bubble-badge ${activeMarker.className ?? ""}`}>{activeMarker.icon || activeMarker.num}</span>
+            <span className="marker-bubble-title">{activeMarker.title || `Point ${activeMarker.num}`}</span>
+          </div>
+          {activeMarker.thumb && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img className="marker-bubble-thumb" src={activeMarker.thumb} alt="" loading="lazy" />
+          )}
+          {activeMarker.meta && <div className="marker-bubble-meta">{activeMarker.meta}</div>}
+          <a className="btn xs primary marker-bubble-action" href={activeMarker.href} onClick={() => setBubble(null)}>
+            {activeMarker.actionLabel || "Détail ›"}
+          </a>
+        </div>
       )}
     </div>
   );

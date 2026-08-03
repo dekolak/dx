@@ -4,6 +4,7 @@ import { OverviewAnnotator } from "@/components/OverviewAnnotator";
 import { PointsAccordion } from "@/components/PointsAccordion";
 import { AddPhotoEnsemble } from "@/components/AddPhotoEnsemble";
 import { OverviewReorder } from "@/components/OverviewReorder";
+import { pointPreview } from "@/lib/pointPreview";
 
 type TargetPiece = { id: string; name: string; deletedAt: string | Date | null } | null;
 type OverviewPoint = { id: string; num: number; x: number | null; y: number | null; icon?: string | null; targetPiece: TargetPiece; entries: EntryData[] };
@@ -38,7 +39,20 @@ export function OverviewSection({
               photoEnsembleId={photo.id}
               photoUrl={photo.url}
               label={photo.label}
-              points={photo.points.map((p) => ({ id: p.id, num: p.num, x: p.x, y: p.y, icon: p.icon, targetPiece: p.targetPiece }))}
+              points={photo.points.map((p) => {
+                const prev = p.targetPiece ? null : pointPreview(p.entries);
+                return {
+                  id: p.id,
+                  num: p.num,
+                  x: p.x,
+                  y: p.y,
+                  icon: p.icon,
+                  targetPiece: p.targetPiece,
+                  title: prev?.title,
+                  meta: prev?.meta,
+                  thumb: prev?.thumb,
+                };
+              })}
               pieces={pieces}
             />
 

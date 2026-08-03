@@ -10,6 +10,9 @@ type OverviewPoint = {
   x: number | null;
   y: number | null;
   icon?: string | null;
+  title?: string;
+  meta?: string;
+  thumb?: string | null;
   targetPiece: { id: string; name: string; deletedAt: string | Date | null } | null;
 };
 
@@ -58,9 +61,21 @@ export function OverviewAnnotator({
 
   function markerFor(p: OverviewPoint): PhotoMarker {
     if (p.targetPiece) {
-      return { id: p.id, num: p.num, x: p.x, y: p.y, icon: p.icon, href: `/pieces/${p.targetPiece.id}`, className: "shortcut" };
+      const gone = !!p.targetPiece.deletedAt;
+      return {
+        id: p.id,
+        num: p.num,
+        x: p.x,
+        y: p.y,
+        icon: p.icon,
+        href: gone ? "#" : `/pieces/${p.targetPiece.id}`,
+        className: "shortcut",
+        title: `→ ${p.targetPiece.name}`,
+        meta: gone ? "Pièce supprimée" : "Raccourci vers une pièce",
+        actionLabel: gone ? undefined : "Ouvrir la pièce ›",
+      };
     }
-    return { id: p.id, num: p.num, x: p.x, y: p.y, icon: p.icon, href: `#point-${p.id}` };
+    return { id: p.id, num: p.num, x: p.x, y: p.y, icon: p.icon, href: `#point-${p.id}`, title: p.title, meta: p.meta, thumb: p.thumb };
   }
 
   function onPlace(x: number, y: number) {
