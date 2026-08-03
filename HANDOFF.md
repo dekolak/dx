@@ -58,13 +58,15 @@ src/
 │   ├── api.ts             # wrapper route() + erreurs typées (400/401/404/500)
 │   ├── data.ts            # LECTURES, TOUJOURS scopées organizationId (server components)
 │   ├── mutations.ts       # ÉCRITURES, vérifient l'appartenance org avant de muter
+│   ├── image.ts           # recadrage + resize + compression des photos côté client
+│   ├── pdf.ts             # génération PDF d'une fiche pièce (pdfkit, cf. §11)
 │   └── client.ts          # helpers fetch + uploadFile (composants client)
 ├── app/
 │   ├── (app)/             # pages protégées (layout = shell mobile + BottomNav)
 │   │   ├── page.tsx                       # liste installations (actives)
 │   │   ├── installations/page.tsx         # toutes les installations
-│   │   ├── installations/[installationId]/ # pièces + software + fiche
-│   │   ├── pieces/[pieceId]/page.tsx      # photo annotée + points empilés
+│   │   ├── installations/[installationId]/ # pièces + software + vue d'ensemble
+│   │   ├── pieces/[pieceId]/page.tsx      # photo annotée + points empilés + export PDF
 │   │   ├── software/[softwareItemId]/     # timeline / changelog
 │   │   ├── journal/page.tsx               # ajout rapide + notes
 │   │   └── trash/page.tsx                 # corbeille (restore / purge)
@@ -120,10 +122,14 @@ Voir `prisma/schema.prisma`. Modèles : `Organization`, `User`, `Installation`,
 | `PATCH/DELETE /api/installations/[id]` | éditer / soft delete                |
 | `POST /api/pieces`             | créer pièce (photoUrl optionnel)            |
 | `PATCH/DELETE /api/pieces/[id]`| éditer (dont photoUrl) / soft delete        |
+| `GET  /api/pieces/[id]/pdf`    | **export PDF** de la fiche (inline, cf. §11) |
 | `POST /api/points`             | créer point (x,y optionnels)                |
 | `PATCH/DELETE /api/points/[id]`| repositionner / soft delete                 |
 | `POST /api/software`           | créer software item                         |
 | `DELETE /api/software/[id]`    | soft delete                                 |
+| `POST /api/photos-ensemble`    | créer une photo d'ensemble                  |
+| `PATCH/DELETE /api/photos-ensemble/[id]` | libellé / soft delete             |
+| `POST /api/photos-ensemble/reorder` | réordonner les photos d'ensemble       |
 | `POST /api/entries`            | **Ajouter une info** (nouvelle entrée)      |
 | `PATCH /api/entries/[id]`      | **Corriger** (édition en place)             |
 | `DELETE /api/entries/[id]`     | soft delete                                 |
@@ -209,10 +215,12 @@ de PostgreSQL, création + migration de la base `dx`, seed, puis export de
 `DATABASE_URL` / `SESSION_SECRET` / `SEED_*` pour la session. Idempotent.
 En local, on continue avec `docker compose up -d` + `.env`.
 
-## 11. État actuel (au 2026-07-30)
+## 11. État actuel (au 2026-08-03)
 
-**Déploiement :** PR #1 **mergée** dans `main` ; `main` = **branche par défaut**
-sur GitHub ; **déploiement Coolify en cours** (relancé côté Teddy).
+**Déploiement :** `main` = **branche par défaut** sur GitHub ; plusieurs
+itérations mergées (scaffold, vue d'ensemble, photos réordonnables, export PDF,
+réglages réseau Coolify) ; **déploiement Coolify** en cours de finalisation côté
+Teddy.
 
 **Fait & validé** (build OK, typecheck OK, lint OK, smoke-test API end-to-end OK) :
 
@@ -268,6 +276,18 @@ sur GitHub ; **déploiement Coolify en cours** (relancé côté Teddy).
   maison (Pointer Events, `touch-action: none`). Vérifié avec de **vrais gestes
   tactiles** (pinch/pan/tap via CDP) au viewport mobile : zoom 1→4.3×, pastille
   constante à 30px, point placé à Δ≈0 de la cible.
+- **Export PDF d'une fiche pièce** (`lib/pdf.ts`, route `GET
+  /api/pieces/[id]/pdf`, bouton « ⬇ PDF ») : gabarit fixe et simple, imprimable /
+  envoyable. En-tête = photo annotée avec les **pastilles numérotées dessinées
+  dessus** (cercles vectoriels aux coordonnées relatives des points → net et
+  fidèle à l'app) ; en dessous, en cascade, chaque point (ordre du n°) — n° +
+  dernière info, puis ses entrées (date, texte, photos jointes) ; les vidéos sont
+  signalées mais non incluses. Rendu via **pdfkit** (pur JS, pas de Chromium →
+  compatible image Docker node-slim) ; `next.config.mjs` déclare
+  `serverExternalPackages: ["pdfkit"]` pour que les métriques de police `.afm`
+  soient résolues depuis `node_modules` au runtime. Vérifié visuellement (build
+  prod → PDF A4 2 pages rendu en PNG) sur une pièce réelle à 3 points + photos
+  jointes : pastilles bien positionnées, titres et textes cadrés à la marge.
 - Software timeline, Journal (ajout rapide + lien pièce optionnel).
 - Partage public `/s/[shareToken]` (testé sans cookie).
 - Soft delete + corbeille (restaurer / purger, purge = suppression fichier disque).
@@ -287,7 +307,6 @@ sur GitHub ; **déploiement Coolify en cours** (relancé côté Teddy).
   guide prêt dans `docs/COOLIFY.md`.
 - Icônes PNG (192/512) en complément du SVG si un navigateur refuse le SVG à
   l'installation PWA.
-- Compression/redimensionnement média côté client avant upload (perf mobile).
 - Écran de gestion des comptes/organisations quand le multi-tenant sera activé.
 - Tests automatisés (aucun pour l'instant).
 - Optimisation image Docker (actuellement on copie tout `node_modules` pour
