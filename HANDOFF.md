@@ -296,7 +296,13 @@ Teddy.
   ⚠️⚡🔌🔧… + « aucune » + **saisie clavier** pour n'importe quel emoji) via le
   sélecteur dans l'accordéon du point : elle occupe la pastille avec le **numéro
   en petit badge d'angle** (correspondance conservée avec la liste et le PDF).
-  `normalizeIcon` ne garde que le premier graphème (emoji composés gérés). Le PDF garde les pastilles numérotées (icône = repère
+  `normalizeIcon` ne garde que le premier graphème (emoji composés gérés).
+- **Bulle d'aperçu au tap d'une pastille** : sur la photo annotée, taper un repère
+  affiche une **bulle sur l'image** (n°/icône + dernière info + vignette + compteurs
+  + bouton « Détail › » qui ouvre l'accordéon ; raccourci d'ensemble → « Ouvrir la
+  pièce › »). Rendue hors du cadre zoomable (`.annotator-wrap`, le stage coupe au
+  zoom), fermée au tap ailleurs / au pan. Aperçu calculé par `lib/pointPreview.ts`.
+  Vérifié sur mobile (bulle, vignette, action, fermeture). Le PDF garde les pastilles numérotées (icône = repère
   in-app). Vérifié sur viewport mobile avec de vrais gestes tactiles (glisser
   persisté en base, tap sans déplacement, icône persistée + rendue).
 - Software timeline, Journal (ajout rapide + lien pièce optionnel).

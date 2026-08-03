@@ -5,6 +5,7 @@ import { PhotoAnnotator } from "@/components/PhotoAnnotator";
 import type { EntryData } from "@/components/EntryCard";
 import { PointsAccordion } from "@/components/PointsAccordion";
 import { DeleteButton } from "@/components/DeleteButton";
+import { pointPreview } from "@/lib/pointPreview";
 
 export const dynamic = "force-dynamic";
 
@@ -13,7 +14,10 @@ export default async function PiecePage({ params }: { params: Promise<{ pieceId:
   const piece = await getPiece(pieceId);
   if (!piece) notFound();
 
-  const markers = piece.points.map((p) => ({ id: p.id, num: p.num, x: p.x, y: p.y, icon: p.icon }));
+  const markers = piece.points.map((p) => {
+    const { title, meta, thumb } = pointPreview(p.entries as unknown as { text: string; media: { type: string; url: string }[] }[]);
+    return { id: p.id, num: p.num, x: p.x, y: p.y, icon: p.icon, title, meta, thumb };
+  });
 
   return (
     <>
