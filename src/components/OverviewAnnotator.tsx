@@ -9,6 +9,7 @@ type OverviewPoint = {
   num: number;
   x: number | null;
   y: number | null;
+  icon?: string | null;
   targetPiece: { id: string; name: string; deletedAt: string | Date | null } | null;
 };
 
@@ -29,7 +30,13 @@ export function OverviewAnnotator({
 }) {
   const router = useRouter();
   const [placing, setPlacing] = useState(false);
+  const [moving, setMoving] = useState(false);
   const [busy, setBusy] = useState(false);
+
+  async function movePoint(id: string, x: number, y: number) {
+    await api.updatePoint(id, { x, y });
+    router.refresh();
+  }
   const [pending, setPending] = useState<{ x: number; y: number } | null>(null);
   const [choicePiece, setChoicePiece] = useState("");
   // « Armé » : évite que le tap qui OUVRE le chooser (sous le doigt) ne clique
@@ -51,9 +58,9 @@ export function OverviewAnnotator({
 
   function markerFor(p: OverviewPoint): PhotoMarker {
     if (p.targetPiece) {
-      return { id: p.id, num: p.num, x: p.x, y: p.y, href: `/pieces/${p.targetPiece.id}`, className: "shortcut" };
+      return { id: p.id, num: p.num, x: p.x, y: p.y, icon: p.icon, href: `/pieces/${p.targetPiece.id}`, className: "shortcut" };
     }
-    return { id: p.id, num: p.num, x: p.x, y: p.y, href: `#point-${p.id}` };
+    return { id: p.id, num: p.num, x: p.x, y: p.y, icon: p.icon, href: `#point-${p.id}` };
   }
 
   function onPlace(x: number, y: number) {
@@ -127,16 +134,29 @@ export function OverviewAnnotator({
         )}
       </div>
 
-      <ZoomablePhoto photoUrl={photoUrl} markers={points.map(markerFor)} placing={placing} onPlace={onPlace} alt="Photo d’ensemble" />
+      <ZoomablePhoto
+        photoUrl={photoUrl}
+        markers={points.map(markerFor)}
+        placing={placing}
+        onPlace={onPlace}
+        moving={moving}
+        onMove={movePoint}
+        alt="Photo d’ensemble"
+      />
 
       <p className="hint">
         {placing
           ? "Touchez la photo à l’endroit du point (zoomez d’abord pour plus de précision)."
-          : "Pincez pour zoomer · double-tap pour (dé)zoomer. Pastille verte = raccourci vers une pièce."}
+          : moving
+            ? "Glissez une pastille pour la repositionner."
+            : "Pincez pour zoomer · double-tap pour (dé)zoomer. Pastille verte = raccourci vers une pièce."}
       </p>
       <div className="btn-row" style={{ marginTop: 6 }}>
-        <button className={`btn sm ${placing ? "primary" : ""}`} disabled={busy} onClick={() => setPlacing((v) => !v)}>
+        <button className={`btn sm ${placing ? "primary" : ""}`} disabled={busy || moving} onClick={() => setPlacing((v) => !v)}>
           {placing ? "① Touchez la photo…" : "＋ Placer un point"}
+        </button>
+        <button className={`btn sm ${moving ? "primary" : ""}`} disabled={busy || placing} onClick={() => setMoving((v) => !v)}>
+          {moving ? "✓ Terminer" : "⇄ Déplacer"}
         </button>
       </div>
 

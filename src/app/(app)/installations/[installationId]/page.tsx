@@ -51,6 +51,7 @@ export default async function InstallationPage({ params }: { params: Promise<{ i
             num: pt.num,
             x: pt.x,
             y: pt.y,
+            icon: pt.icon,
             targetPiece: pt.targetPiece,
             entries: pt.entries as unknown as EntryData[],
           })),

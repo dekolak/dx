@@ -8,6 +8,7 @@ export type PhotoMarker = {
   y: number | null;
   href: string; // "#point-<id>" (info) ou "/pieces/<id>" (raccourci)
   className?: string; // ex "shortcut"
+  icon?: string | null; // emoji facultatif affiché dans la pastille
 };
 
 const MIN_SCALE = 1;
@@ -27,24 +28,33 @@ export function ZoomablePhoto({
   markers,
   placing,
   onPlace,
+  moving = false,
+  onMove,
   alt = "Photo",
 }: {
   photoUrl: string;
   markers: PhotoMarker[];
   placing: boolean;
   onPlace: (x: number, y: number) => void;
+  moving?: boolean; // mode « déplacer » : on fait glisser les pastilles existantes
+  onMove?: (id: string, x: number, y: number) => void;
   alt?: string;
 }) {
   const [zoomed, setZoomed] = useState(false);
+  // Positions provisoires pendant/après un glisser (optimiste, évite le clignotement
+  // le temps que le serveur renvoie les nouvelles coordonnées).
+  const [overrides, setOverrides] = useState<Record<string, { x: number; y: number }>>({});
   const stageRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const imgRef = useRef<HTMLImageElement>(null);
   const placingRef = useRef(placing);
   placingRef.current = placing;
+  const movingRef = useRef(moving);
+  movingRef.current = moving;
 
   const tf = useRef({ scale: 1, tx: 0, ty: 0 });
   const pointers = useRef<Map<number, { x: number; y: number }>>(new Map());
-  const g = useRef({ startX: 0, startY: 0, startTime: 0, prevMidX: 0, prevMidY: 0, prevDist: 0, moved: false, pinched: false, onMarker: false, lastTapTime: 0 });
+  const g = useRef({ startX: 0, startY: 0, startTime: 0, prevMidX: 0, prevMidY: 0, prevDist: 0, moved: false, pinched: false, onMarker: false, lastTapTime: 0, dragId: "" as string, dragPointerId: -1, dragX: 0, dragY: 0, dragMoved: false });
   const rafId = useRef(0);
 
   const applyTransform = useCallback(() => {
@@ -118,7 +128,20 @@ export function ZoomablePhoto({
   }
 
   function onPointerDown(e: React.PointerEvent<HTMLDivElement>) {
-    if ((e.target as Element).closest?.(".marker")) {
+    const markerEl = (e.target as Element).closest?.(".marker") as HTMLElement | null;
+    if (markerEl) {
+      // Mode « déplacer » : on démarre le glisser de CETTE pastille.
+      if (movingRef.current && !g.current.dragId) {
+        const id = markerEl.dataset.pointId;
+        if (id) {
+          g.current.dragId = id;
+          g.current.dragPointerId = e.pointerId;
+          g.current.dragMoved = false;
+          stageRef.current?.setPointerCapture(e.pointerId);
+          e.preventDefault();
+        }
+        return;
+      }
       g.current.onMarker = true;
       return;
     }
@@ -143,6 +166,21 @@ export function ZoomablePhoto({
   }
 
   function onPointerMove(e: React.PointerEvent<HTMLDivElement>) {
+    // Glisser d'une pastille (mode déplacer) : coords depuis le rect transformé.
+    if (g.current.dragId && e.pointerId === g.current.dragPointerId) {
+      e.preventDefault();
+      const el = imgRef.current;
+      if (!el) return;
+      const rect = el.getBoundingClientRect();
+      const x = clamp((e.clientX - rect.left) / rect.width, 0, 1);
+      const y = clamp((e.clientY - rect.top) / rect.height, 0, 1);
+      g.current.dragX = x;
+      g.current.dragY = y;
+      g.current.dragMoved = true;
+      const id = g.current.dragId;
+      setOverrides((o) => ({ ...o, [id]: { x, y } }));
+      return;
+    }
     if (!pointers.current.has(e.pointerId)) return;
     pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
     const pts = [...pointers.current.values()];
@@ -182,6 +220,17 @@ export function ZoomablePhoto({
   }
 
   function onPointerUp(e: React.PointerEvent<HTMLDivElement>) {
+    // Fin d'un glisser de pastille → on persiste les nouvelles coordonnées.
+    if (g.current.dragId && e.pointerId === g.current.dragPointerId) {
+      const id = g.current.dragId;
+      const { dragX, dragY, dragMoved } = g.current;
+      g.current.dragId = "";
+      g.current.dragPointerId = -1;
+      stageRef.current?.releasePointerCapture?.(e.pointerId);
+      // Un simple tap (sans glisser) ne doit PAS repositionner le point.
+      if (dragMoved) onMove?.(id, dragX, dragY);
+      return;
+    }
     if (g.current.onMarker) {
       g.current.onMarker = false;
       return;
@@ -200,12 +249,17 @@ export function ZoomablePhoto({
     }
   }
 
-  const placed = markers.filter((p) => p.x != null && p.y != null);
+  const placed = markers
+    .filter((p) => p.x != null && p.y != null)
+    .map((p) => {
+      const o = overrides[p.id];
+      return o ? { ...p, x: o.x, y: o.y } : p;
+    });
 
   return (
     <div
       ref={stageRef}
-      className={`annotator ${placing ? "placing" : ""}`}
+      className={`annotator ${placing ? "placing" : ""} ${moving ? "moving" : ""}`}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
@@ -217,11 +271,20 @@ export function ZoomablePhoto({
         {placed.map((p) => (
           <a
             key={p.id}
-            href={p.href}
-            className={`marker ${p.className ?? ""}`}
+            data-point-id={p.id}
+            href={moving ? undefined : p.href}
+            onClick={moving ? (e) => e.preventDefault() : undefined}
+            className={`marker ${p.className ?? ""} ${p.icon ? "has-icon" : ""} ${moving ? "movable" : ""}`}
             style={{ left: `${(p.x as number) * 100}%`, top: `${(p.y as number) * 100}%` }}
           >
-            {p.num}
+            {p.icon ? (
+              <>
+                <span className="marker-glyph">{p.icon}</span>
+                <span className="marker-badge">{p.num}</span>
+              </>
+            ) : (
+              <span className="marker-glyph">{p.num}</span>
+            )}
           </a>
         ))}
       </div>

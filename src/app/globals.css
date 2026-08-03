@@ -430,10 +430,51 @@ label {
 .annotator .marker.shortcut {
   background: var(--ok);
 }
+.annotator .marker .marker-glyph {
+  line-height: 1;
+}
+.annotator .marker.has-icon .marker-glyph {
+  /* emoji : un peu plus grand, sans le décalage vertical par défaut */
+  font-size: 16px;
+  font-weight: 400;
+}
+/* Numéro en petit badge d'angle quand une icône occupe la pastille. */
+.annotator .marker .marker-badge {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  min-width: 15px;
+  height: 15px;
+  padding: 0 3px;
+  border-radius: 8px;
+  background: #fff;
+  color: #111;
+  border: 1px solid rgba(0, 0, 0, 0.2);
+  font-size: 9px;
+  font-weight: 800;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+}
 .annotator.placing {
   cursor: crosshair;
   outline: 2px dashed var(--accent);
   outline-offset: -2px;
+}
+/* Mode « déplacer » : anneau sur les pastilles + curseur main. */
+.annotator.moving {
+  outline: 2px dashed var(--ok);
+  outline-offset: -2px;
+}
+.annotator .marker.movable {
+  cursor: grab;
+  box-shadow: 0 0 0 2px var(--ok), 0 1px 6px rgba(0, 0, 0, 0.5);
+  touch-action: none;
+}
+.annotator .marker.movable:active {
+  cursor: grabbing;
 }
 /* Liste réordonnable (glisser-déposer) */
 .reorder-list {
@@ -645,6 +686,49 @@ label {
 .point-pill {
   background: var(--accent);
   color: #fff;
+}
+.point-icon-tag {
+  font-size: 16px;
+  line-height: 1;
+}
+/* Sélecteur d'icône d'un point (dans le corps déplié). */
+.icon-picker {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+.icon-picker-label {
+  font-size: 12px;
+  color: var(--muted);
+  margin-right: 2px;
+}
+.icon-opt {
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  font-size: 17px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+}
+.icon-opt.clear {
+  color: var(--muted);
+  font-size: 15px;
+}
+.icon-opt.sel {
+  border-color: var(--accent);
+  outline: 2px solid var(--accent);
+  outline-offset: -1px;
+}
+.icon-opt:disabled {
+  opacity: 0.5;
 }
 .point-title {
   font-size: 14px;

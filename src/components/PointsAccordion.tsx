@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import type { EntryData } from "@/components/EntryCard";
 import { CollapsiblePoint } from "@/components/CollapsiblePoint";
 
-type Item = { point: { id: string; num: number; x: number | null; y: number | null }; entries: EntryData[] };
+type Item = { point: { id: string; num: number; x: number | null; y: number | null; icon?: string | null }; entries: EntryData[] };
 
 // Accordéon des points : un seul ouvert à la fois. Ouvre aussi automatiquement
 // le point ciblé par l'ancre #point-<id> (clic sur un marqueur / point créé).
