@@ -191,11 +191,19 @@ export async function createPoint(input: {
   return prisma.point.create({ data: { photoEnsembleId, targetPieceId, num: (max._max.num ?? 0) + 1, x, y, icon } });
 }
 
-// Normalise une icône : chaîne courte (emoji) ou null pour l'effacer.
+// Normalise une icône : garde le PREMIER graphème (un emoji, même composé de
+// plusieurs code points comme ⚠️ ou 👨‍🔧), ou null pour l'effacer.
 function normalizeIcon(v: unknown): string | null {
   if (typeof v !== "string") return null;
   const s = v.trim();
-  return s ? s.slice(0, 8) : null;
+  if (!s) return null;
+  try {
+    const seg = new Intl.Segmenter(undefined, { granularity: "grapheme" });
+    const first = seg.segment(s)[Symbol.iterator]().next().value as { segment: string } | undefined;
+    return first ? first.segment.slice(0, 16) : null;
+  } catch {
+    return s.slice(0, 8);
+  }
 }
 
 export async function updatePoint(id: string, input: { x?: unknown; y?: unknown; num?: unknown; icon?: unknown }) {

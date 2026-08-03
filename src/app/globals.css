@@ -730,6 +730,26 @@ label {
 .icon-opt:disabled {
   opacity: 0.5;
 }
+.icon-input-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.icon-input {
+  width: 58px;
+  height: 34px;
+  border-radius: 9px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text);
+  font-size: 17px;
+  line-height: 1;
+  text-align: center;
+  padding: 0 6px;
+}
+.icon-input::placeholder {
+  font-size: 12px;
+}
 .point-title {
   font-size: 14px;
   color: var(--text);
