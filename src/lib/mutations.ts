@@ -220,6 +220,51 @@ export async function updatePoint(id: string, input: { x?: unknown; y?: unknown;
   });
 }
 
+// --- Liaisons entre repères -------------------------------------------------
+
+// Résout l'installation d'un repère de PIÈCE (les liaisons ne concernent que les
+// repères posés sur une pièce). Lève si introuvable / hors org / pas un repère de pièce.
+async function pieceePointInstallation(orgId: string, pointId: string): Promise<string> {
+  const p = await prisma.point.findFirst({
+    where: { id: pointId, deletedAt: null, piece: { deletedAt: null, installation: { organizationId: orgId } } },
+    select: { piece: { select: { installationId: true } } },
+  });
+  if (!p?.piece) throw new NotFoundError("Repère introuvable");
+  return p.piece.installationId;
+}
+
+export async function createPointLink(input: { pointId?: unknown; targetPointId?: unknown; label?: unknown }) {
+  const organizationId = await requireOrgId();
+  const pointId = typeof input.pointId === "string" ? input.pointId.trim() : "";
+  const targetPointId = typeof input.targetPointId === "string" ? input.targetPointId.trim() : "";
+  if (!pointId || !targetPointId) throw new BadRequestError("pointId et targetPointId requis");
+  if (pointId === targetPointId) throw new BadRequestError("Un repère ne peut pas être relié à lui-même");
+
+  const [instA, instB] = await Promise.all([
+    pieceePointInstallation(organizationId, pointId),
+    pieceePointInstallation(organizationId, targetPointId),
+  ]);
+  if (instA !== instB) throw new BadRequestError("Les deux repères doivent être dans la même installation");
+
+  // Ordre canonique → (a,b) et (b,a) = même ligne (unicité).
+  const [aPointId, bPointId] = [pointId, targetPointId].sort();
+  const label = typeof input.label === "string" && input.label.trim() ? input.label.trim().slice(0, 120) : null;
+
+  const existing = await prisma.pointLink.findUnique({ where: { aPointId_bPointId: { aPointId, bPointId } } });
+  if (existing) {
+    return prisma.pointLink.update({ where: { id: existing.id }, data: { label } });
+  }
+  return prisma.pointLink.create({ data: { organizationId, aPointId, bPointId, label } });
+}
+
+export async function deletePointLink(id: string) {
+  const organizationId = await requireOrgId();
+  const link = await prisma.pointLink.findFirst({ where: { id, organizationId } });
+  if (!link) throw new NotFoundError("Liaison introuvable");
+  await prisma.pointLink.delete({ where: { id } });
+  return { ok: true };
+}
+
 // --- Software ---------------------------------------------------------------
 
 export async function createSoftwareItem(input: { installationId?: unknown; name?: unknown }) {

@@ -37,6 +37,10 @@ export const api = {
   updatePoint: (id: string, b: Record<string, unknown>) => req(`/api/points/${id}`, "PATCH", b),
   deletePoint: (id: string) => req(`/api/points/${id}`, "DELETE"),
 
+  createPointLink: (b: { pointId: string; targetPointId: string; label?: string }) =>
+    req("/api/point-links", "POST", b),
+  deletePointLink: (id: string) => req(`/api/point-links/${id}`, "DELETE"),
+
   createSoftware: (b: { installationId: string; name: string }) => req("/api/software", "POST", b),
   deleteSoftware: (id: string) => req(`/api/software/${id}`, "DELETE"),
 

@@ -1,13 +1,32 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/client";
 import type { EntryData } from "@/components/EntryCard";
 import { EntryGallery } from "@/components/EntryGallery";
 import { EntryComposer } from "@/components/EntryComposer";
 import { DeleteButton } from "@/components/DeleteButton";
+import { LinkPointModal } from "@/components/LinkPointModal";
 
 type PointData = { id: string; num: number; x: number | null; y: number | null; icon?: string | null };
+
+// Une liaison affichée : l'autre repère (pièce · n° · icône) + libellé.
+export type LinkChip = {
+  linkId: string;
+  label: string | null;
+  pointId: string;
+  num: number;
+  icon: string | null;
+  pieceId: string;
+  pieceName: string;
+};
+// Cibles possibles d'une liaison (repères de pièce de l'installation).
+export type LinkTargetPiece = {
+  pieceId: string;
+  pieceName: string;
+  points: { id: string; num: number; icon: string | null; title: string }[];
+};
 
 // Jeu d'icônes prêtes à l'emploi (repères atelier / électronique).
 export const POINT_ICONS = ["⚠️", "⚡", "🔌", "🔧", "🔩", "🔥", "💧", "🌡️", "🔋", "⚙️", "💡", "📷"];
@@ -23,11 +42,15 @@ function snippet(text: string, n = 42) {
 export function CollapsiblePoint({
   point,
   entries,
+  links = [],
+  linkTargets,
   open,
   onToggle,
 }: {
   point: PointData;
   entries: EntryData[];
+  links?: LinkChip[];
+  linkTargets?: LinkTargetPiece[]; // fourni = liaison de repères activée (page pièce)
   open: boolean;
   onToggle: () => void;
 }) {
@@ -35,6 +58,17 @@ export function CollapsiblePoint({
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [custom, setCustom] = useState("");
+  const [linking, setLinking] = useState(false);
+
+  async function removeLink(linkId: string) {
+    setBusy(true);
+    try {
+      await api.deletePointLink(linkId);
+      router.refresh();
+    } finally {
+      setBusy(false);
+    }
+  }
 
   // Quand il s'ouvre, on le fait remonter dans la vue (utile sur mobile).
   useEffect(() => {
@@ -79,6 +113,7 @@ export function CollapsiblePoint({
             {point.icon && <span className="point-icon-tag">{point.icon}</span>}
             <span className="pill point-pill">Point {point.num}</span>
             {point.x == null && <span className="pill">libre</span>}
+            {links.length > 0 && <span className="pill link-pill" title="Liaisons">🔗 {links.length}</span>}
           </span>
           <span className="point-title">{title}</span>
           <span className="point-meta">
@@ -149,6 +184,38 @@ export function CollapsiblePoint({
               </button>
             </span>
           </div>
+
+          {(links.length > 0 || linkTargets) && (
+            <div className="link-block">
+              <span className="link-block-label">🔗 Liaisons</span>
+              <div className="link-chips">
+                {links.map((l) => (
+                  <span key={l.linkId} className="link-chip">
+                    <Link href={`/pieces/${l.pieceId}#point-${l.pointId}`} className="link-chip-go">
+                      {l.icon ? `${l.icon} ` : ""}
+                      {l.pieceName} · Point {l.num}
+                      {l.label ? ` — ${l.label}` : ""}
+                    </Link>
+                    <button
+                      type="button"
+                      className="link-chip-x"
+                      disabled={busy}
+                      aria-label="Retirer la liaison"
+                      onClick={() => removeLink(l.linkId)}
+                    >
+                      ✕
+                    </button>
+                  </span>
+                ))}
+                {linkTargets && (
+                  <button type="button" className="btn xs" disabled={busy} onClick={() => setLinking(true)}>
+                    ＋ Relier à un repère
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+
           <EntryGallery entries={entries} />
           <div style={{ marginTop: 10 }}>
             <EntryComposer type="point" pointId={point.id} compact submitLabel="Ajouter une info" />
@@ -164,6 +231,15 @@ export function CollapsiblePoint({
             />
           </div>
         </div>
+      )}
+
+      {linking && linkTargets && (
+        <LinkPointModal
+          pointId={point.id}
+          targets={linkTargets}
+          alreadyLinked={new Set<string>([point.id, ...links.map((l) => l.pointId)])}
+          onClose={() => setLinking(false)}
+        />
       )}
     </section>
   );

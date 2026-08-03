@@ -595,6 +595,82 @@ label {
   display: inline-flex;
   margin-top: 10px;
 }
+.marker-bubble-links {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin-top: 8px;
+}
+.marker-bubble-link {
+  font-size: 12.5px;
+  color: var(--accent);
+  text-decoration: none;
+  padding: 5px 8px;
+  border-radius: 8px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  line-height: 1.2;
+}
+/* Petit indicateur de liaison sur la pastille (coin bas-droit). */
+.annotator .marker .marker-link-badge {
+  position: absolute;
+  bottom: -6px;
+  right: -6px;
+  font-size: 9px;
+  line-height: 1;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 1px 2px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+}
+/* Bloc « Liaisons » dans l'accordéon d'un point. */
+.link-block {
+  margin-bottom: 12px;
+}
+.link-block-label {
+  display: block;
+  font-size: 12px;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+.link-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+.link-chip {
+  display: inline-flex;
+  align-items: stretch;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  overflow: hidden;
+  background: var(--surface-2);
+}
+.link-chip-go {
+  padding: 5px 10px;
+  font-size: 12.5px;
+  color: var(--text);
+  text-decoration: none;
+  max-width: 240px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.link-chip-x {
+  border: none;
+  border-left: 1px solid var(--border);
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  padding: 0 8px;
+  font-size: 11px;
+}
+.link-pill {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+}
 /* Liste réordonnable (glisser-déposer) */
 .reorder-list {
   display: flex;

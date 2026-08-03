@@ -14,6 +14,7 @@ export type PhotoMarker = {
   meta?: string; // ex "2 infos · 1 📷"
   thumb?: string | null; // vignette photo
   actionLabel?: string; // libellé du bouton (défaut « Détail › »)
+  links?: { label: string; href: string }[]; // liaisons vers d'autres repères
 };
 
 const MIN_SCALE = 1;
@@ -326,6 +327,7 @@ export function ZoomablePhoto({
               ) : (
                 <span className="marker-glyph">{p.num}</span>
               )}
+              {p.links && p.links.length > 0 && <span className="marker-link-badge">🔗</span>}
             </a>
           ))}
         </div>
@@ -354,6 +356,15 @@ export function ZoomablePhoto({
             <img className="marker-bubble-thumb" src={activeMarker.thumb} alt="" loading="lazy" />
           )}
           {activeMarker.meta && <div className="marker-bubble-meta">{activeMarker.meta}</div>}
+          {activeMarker.links && activeMarker.links.length > 0 && (
+            <div className="marker-bubble-links">
+              {activeMarker.links.map((l, i) => (
+                <a key={i} className="marker-bubble-link" href={l.href} onClick={() => setBubble(null)}>
+                  🔗 {l.label}
+                </a>
+              ))}
+            </div>
+          )}
           <a className="btn xs primary marker-bubble-action" href={activeMarker.href} onClick={() => setBubble(null)}>
             {activeMarker.actionLabel || "Détail ›"}
           </a>

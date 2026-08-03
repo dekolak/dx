@@ -130,6 +130,8 @@ Voir `prisma/schema.prisma`. Modèles : `Organization`, `User`, `Installation`,
 | `POST /api/photos-ensemble`    | créer une photo d'ensemble                  |
 | `PATCH/DELETE /api/photos-ensemble/[id]` | libellé / soft delete             |
 | `POST /api/photos-ensemble/reorder` | réordonner les photos d'ensemble       |
+| `POST /api/point-links`        | relier deux repères (même installation)     |
+| `DELETE /api/point-links/[id]` | retirer une liaison                         |
 | `POST /api/entries`            | **Ajouter une info** (nouvelle entrée)      |
 | `PATCH /api/entries/[id]`      | **Corriger** (édition en place)             |
 | `DELETE /api/entries/[id]`     | soft delete                                 |
@@ -305,6 +307,17 @@ Teddy.
   Vérifié sur mobile (bulle, vignette, action, fermeture). Le PDF garde les pastilles numérotées (icône = repère
   in-app). Vérifié sur viewport mobile avec de vrais gestes tactiles (glisser
   persisté en base, tap sans déplacement, icône persistée + rendue).
+- **Liaisons entre repères** (connexion carte↔carte) : un repère de pièce peut
+  être relié à un ou plusieurs autres repères de **pièces de la même
+  installation** (modèle `PointLink`, non orienté, `(aPointId,bPointId)` triés +
+  unique). Création via la modale « 🔗 Relier à un repère » dans l'accordéon
+  (choisir pièce → repère → libellé optionnel « nappe 20 broches »). Affichage
+  **des deux côtés** (bidirectionnel) : puce cliquable dans l'accordéon (retrait
+  via ✕), lien dans la **bulle d'aperçu**, badge 🔗 sur la pastille et pill dans
+  l'en-tête ; clic → navigue vers l'autre repère (`/pieces/<id>#point-<id>`).
+  Routes `POST /api/point-links`, `DELETE /api/point-links/[id]` ; cibles via
+  `getLinkTargets`. Réservé aux repères de pièce (pas les points d'ensemble).
+  Vérifié sur mobile (création, réciprocité, navigation, retrait).
 - Software timeline, Journal (ajout rapide + lien pièce optionnel).
 - Partage public `/s/[shareToken]` (testé sans cookie).
 - Soft delete + corbeille (restaurer / purger, purge = suppression fichier disque).

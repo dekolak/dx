@@ -133,11 +133,35 @@ model Point {
   photoEnsemble PhotoEnsemble? @relation(fields: [photoEnsembleId], references: [id], onDelete: Cascade)
   targetPiece   Piece?         @relation("PieceShortcuts", fields: [targetPieceId], references: [id], onDelete: SetNull)
   entries       Entry[] // historique empilé (points info libre)
+  // Liaisons vers d'autres repères (connexion physique carte↔carte). Stockées
+  // dans un ordre canonique (aPointId < bPointId) → chaque liaison = 1 ligne,
+  // vue des deux côtés (linksA quand ce point est « a », linksB quand il est « b »).
+  linksA        PointLink[]    @relation("PointLinkA")
+  linksB        PointLink[]    @relation("PointLinkB")
 
   @@index([pieceId])
   @@index([photoEnsembleId])
   @@index([targetPieceId])
   @@index([deletedAt])
+}
+
+// Liaison entre DEUX repères (ex. un connecteur relié par une nappe à un
+// connecteur d'une autre carte). Non orientée : (a,b) stockés triés, unique.
+model PointLink {
+  id             String   @id @default(cuid())
+  organizationId String // dénormalisé pour le scope (pas de relation nécessaire)
+  aPointId       String
+  bPointId       String
+  label          String? // ex : "nappe 20 broches", "24V"
+  createdAt      DateTime @default(now())
+
+  aPoint Point @relation("PointLinkA", fields: [aPointId], references: [id], onDelete: Cascade)
+  bPoint Point @relation("PointLinkB", fields: [bPointId], references: [id], onDelete: Cascade)
+
+  @@unique([aPointId, bPointId])
+  @@index([aPointId])
+  @@index([bPointId])
+  @@index([organizationId])
 }
 
 model SoftwareItem {
