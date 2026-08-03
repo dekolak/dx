@@ -1155,3 +1155,44 @@ label {
   font-size: 12px;
   color: var(--muted);
 }
+
+/* --- Journal : recherche + filtres --- */
+.journal-filters {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.journal-search {
+  width: 100%;
+}
+.filter-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.chip-btn {
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--muted);
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-size: 12.5px;
+  cursor: pointer;
+}
+.chip-btn.sel {
+  background: var(--accent);
+  color: var(--accent-contrast);
+  border-color: transparent;
+}
+.journal-link-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.journal-link-edit-btn {
+  margin-left: auto;
+}
+.journal-link-edit {
+  margin-bottom: 6px;
+}

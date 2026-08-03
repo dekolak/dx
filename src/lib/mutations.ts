@@ -407,12 +407,51 @@ function normalizeMedia(raw: unknown): MediaInput[] {
  * Crée une nouvelle entrée EMPILÉE (jamais d'écrasement de l'historique).
  * Selon `type`, rattache à un point, un software, ou reste journal libre.
  */
+// Résout le lien d'une note de journal : AU PLUS une cible (pièce > installation
+// > logiciel), vérifiée dans l'org. Retourne le fragment de données à écrire.
+type JournalLinkInput = { linkedPieceId?: unknown; linkedInstallationId?: unknown; linkedSoftwareItemId?: unknown };
+async function resolveJournalLink(orgId: string, input: JournalLinkInput): Promise<Record<string, string>> {
+  const piece = typeof input.linkedPieceId === "string" ? input.linkedPieceId.trim() : "";
+  const inst = typeof input.linkedInstallationId === "string" ? input.linkedInstallationId.trim() : "";
+  const sw = typeof input.linkedSoftwareItemId === "string" ? input.linkedSoftwareItemId.trim() : "";
+  if (piece) {
+    await assertPiece(orgId, piece);
+    return { linkedPieceId: piece };
+  }
+  if (inst) {
+    await assertInstallation(orgId, inst);
+    return { linkedInstallationId: inst };
+  }
+  if (sw) {
+    await assertSoftware(orgId, sw);
+    return { linkedSoftwareItemId: sw };
+  }
+  return {};
+}
+
+// Change (ou retire) le lien d'une note de journal.
+export async function relinkJournalEntry(id: string, input: JournalLinkInput) {
+  const organizationId = await requireOrgId();
+  await assertEntry(organizationId, id);
+  const link = await resolveJournalLink(organizationId, input);
+  return prisma.entry.update({
+    where: { id },
+    data: {
+      linkedPieceId: link.linkedPieceId ?? null,
+      linkedInstallationId: link.linkedInstallationId ?? null,
+      linkedSoftwareItemId: link.linkedSoftwareItemId ?? null,
+    },
+  });
+}
+
 export async function createEntry(input: {
   type?: unknown;
   text?: unknown;
   pointId?: unknown;
   softwareItemId?: unknown;
   linkedPieceId?: unknown;
+  linkedInstallationId?: unknown;
+  linkedSoftwareItemId?: unknown;
   media?: unknown;
 }) {
   const organizationId = await requireOrgId();
@@ -435,10 +474,7 @@ export async function createEntry(input: {
     await assertSoftware(organizationId, softwareItemId);
     data.softwareItemId = softwareItemId;
   } else if (type === "journal") {
-    if (typeof input.linkedPieceId === "string" && input.linkedPieceId.trim()) {
-      await assertPiece(organizationId, input.linkedPieceId.trim());
-      data.linkedPieceId = input.linkedPieceId.trim();
-    }
+    Object.assign(data, await resolveJournalLink(organizationId, input));
   }
 
   return prisma.entry.create({

@@ -54,6 +54,7 @@ export async function getInstallation(installationId: string) {
     include: {
       pieces: { where: { deletedAt: null }, orderBy: { name: "asc" } },
       softwareItems: { where: { deletedAt: null }, orderBy: { createdAt: "desc" } },
+      journalEntries: { where: { deletedAt: null }, orderBy: { createdAt: "desc" }, include: entryInclude },
       photosEnsemble: {
         where: { deletedAt: null },
         orderBy: { sortOrder: "asc" },
@@ -90,6 +91,7 @@ export async function getPiece(pieceId: string) {
           ...pointLinksInclude,
         },
       },
+      linkedEntries: { where: { deletedAt: null }, orderBy: { createdAt: "desc" }, include: entryInclude },
     },
   });
 }
@@ -126,6 +128,7 @@ export async function getSoftwareItem(softwareItemId: string) {
       installation: true,
       versions: { orderBy: [{ isCurrent: "desc" }, { createdAt: "desc" }] },
       entries: { where: { deletedAt: null }, orderBy: { createdAt: "desc" }, include: entryInclude },
+      journalEntries: { where: { deletedAt: null }, orderBy: { createdAt: "desc" }, include: entryInclude },
     },
   });
 }
@@ -135,20 +138,37 @@ export async function listJournal() {
   return prisma.entry.findMany({
     where: { organizationId, type: "journal", deletedAt: null },
     orderBy: { createdAt: "desc" },
-    include: { ...entryInclude, linkedPiece: { include: { installation: true } } },
+    include: {
+      ...entryInclude,
+      linkedPiece: { include: { installation: { select: { name: true } } } },
+      linkedInstallation: { select: { id: true, name: true } },
+      linkedSoftware: { include: { installation: { select: { name: true } } } },
+    },
   });
 }
 
-/** Liste plate des pièces (pour le sélecteur de lien du journal). */
-export async function listPiecesForPicker() {
+// Cibles possibles d'un lien de note de journal : installations, pièces, logiciels
+// (avec un libellé prêt pour un <select>).
+export async function listJournalTargets() {
   const organizationId = await requireOrgId();
-  const pieces = await prisma.piece.findMany({
-    where: { deletedAt: null, installation: { organizationId } },
-    orderBy: [{ installation: { name: "asc" } }, { name: "asc" }],
-    include: { installation: { select: { name: true } } },
+  const installations = await prisma.installation.findMany({
+    where: { organizationId, deletedAt: null },
+    orderBy: { name: "asc" },
+    select: {
+      id: true,
+      name: true,
+      pieces: { where: { deletedAt: null }, orderBy: { name: "asc" }, select: { id: true, name: true } },
+      softwareItems: { where: { deletedAt: null }, orderBy: { name: "asc" }, select: { id: true, name: true } },
+    },
   });
-  return pieces.map((p) => ({ id: p.id, label: `${p.installation.name} — ${p.name}` }));
+  return {
+    installations: installations.map((i) => ({ id: i.id, label: i.name })),
+    pieces: installations.flatMap((i) => i.pieces.map((p) => ({ id: p.id, label: `${i.name} — ${p.name}` }))),
+    software: installations.flatMap((i) => i.softwareItems.map((s) => ({ id: s.id, label: `${i.name} — ${s.name}` }))),
+  };
 }
+
+/** Liste plate des pièces (pour le sélecteur de lien du journal). */
 
 export async function getEntry(entryId: string) {
   const organizationId = await requireOrgId();

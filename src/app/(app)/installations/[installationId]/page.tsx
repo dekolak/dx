@@ -7,6 +7,7 @@ import { DeleteButton } from "@/components/DeleteButton";
 import { InstallationActiveToggle } from "@/components/InstallationActiveToggle";
 import { InstallationEditForm } from "@/components/InstallationEditForm";
 import { OverviewSection } from "@/components/OverviewSection";
+import { LinkedJournalNotes } from "@/components/LinkedJournalNotes";
 import type { EntryData } from "@/components/EntryCard";
 
 export const dynamic = "force-dynamic";
@@ -98,6 +99,8 @@ export default async function InstallationPage({ params }: { params: Promise<{ i
       <div style={{ marginTop: 12 }}>
         <AddSoftware installationId={installation.id} />
       </div>
+
+      <LinkedJournalNotes entries={installation.journalEntries as unknown as EntryData[]} />
 
       <div className="danger-zone">
         <DeleteButton

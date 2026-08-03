@@ -6,6 +6,7 @@ import type { EntryData } from "@/components/EntryCard";
 import { PointsAccordion } from "@/components/PointsAccordion";
 import type { LinkChip } from "@/components/CollapsiblePoint";
 import { DeleteButton } from "@/components/DeleteButton";
+import { LinkedJournalNotes } from "@/components/LinkedJournalNotes";
 import { pointPreview, snippet } from "@/lib/pointPreview";
 import { normalizePointLinks } from "@/lib/pointLinks";
 
@@ -73,6 +74,8 @@ export default async function PiecePage({ params }: { params: Promise<{ pieceId:
         }))}
         linkTargets={linkTargets}
       />
+
+      <LinkedJournalNotes entries={piece.linkedEntries as unknown as EntryData[]} />
 
       <div className="danger-zone">
         <DeleteButton

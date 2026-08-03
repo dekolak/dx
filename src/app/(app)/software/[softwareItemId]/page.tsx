@@ -5,6 +5,7 @@ import { EntryCard, type EntryData } from "@/components/EntryCard";
 import { EntryComposer } from "@/components/EntryComposer";
 import { SoftwareDescription } from "@/components/SoftwareDescription";
 import { SoftwareVersions, type SoftwareVersionData } from "@/components/SoftwareVersions";
+import { LinkedJournalNotes } from "@/components/LinkedJournalNotes";
 import { DeleteButton } from "@/components/DeleteButton";
 
 export const dynamic = "force-dynamic";
@@ -51,6 +52,8 @@ export default async function SoftwarePage({ params }: { params: Promise<{ softw
           <EntryCard key={e.id} entry={e as unknown as EntryData} />
         ))}
       </div>
+
+      <LinkedJournalNotes entries={item.journalEntries as unknown as EntryData[]} />
 
       <div className="section-title">
         <span>Zone de danger</span>

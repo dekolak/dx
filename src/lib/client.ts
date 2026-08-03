@@ -70,9 +70,13 @@ export const api = {
     pointId?: string;
     softwareItemId?: string;
     linkedPieceId?: string;
+    linkedInstallationId?: string;
+    linkedSoftwareItemId?: string;
     media?: Media[];
   }) => req("/api/entries", "POST", b),
   correctEntry: (id: string, b: { text?: string; media?: Media[] }) => req(`/api/entries/${id}`, "PATCH", b),
+  relinkEntry: (id: string, b: { linkedPieceId?: string; linkedInstallationId?: string; linkedSoftwareItemId?: string }) =>
+    req(`/api/entries/${id}/link`, "POST", b),
   deleteEntry: (id: string) => req(`/api/entries/${id}`, "DELETE"),
   setShare: (id: string, shareable: boolean) =>
     req<{ shareToken: string | null; shareable: boolean }>(`/api/entries/${id}/share`, "POST", { shareable }),
