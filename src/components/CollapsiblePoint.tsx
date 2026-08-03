@@ -34,6 +34,7 @@ export function CollapsiblePoint({
   const ref = useRef<HTMLElement>(null);
   const router = useRouter();
   const [busy, setBusy] = useState(false);
+  const [custom, setCustom] = useState("");
 
   // Quand il s'ouvre, on le fait remonter dans la vue (utile sur mobile).
   useEffect(() => {
@@ -49,6 +50,16 @@ export function CollapsiblePoint({
       setBusy(false);
     }
   }
+
+  // Applique l'emoji tapé au clavier (le serveur ne garde que le 1er graphème).
+  async function applyCustom() {
+    const v = custom.trim();
+    if (!v) return;
+    setCustom("");
+    await setIcon(v);
+  }
+
+  const customIcon = point.icon && !POINT_ICONS.includes(point.icon) ? point.icon : null;
 
   const latest = entries[entries.length - 1];
   const photoCount = entries.reduce((n, e) => n + e.media.filter((m) => m.type === "photo").length, 0);
@@ -94,6 +105,19 @@ export function CollapsiblePoint({
                 {ic}
               </button>
             ))}
+            {/* Icône perso en cours (tapée au clavier, hors set) → toujours visible. */}
+            {customIcon && (
+              <button
+                type="button"
+                className="icon-opt sel"
+                disabled={busy}
+                aria-pressed
+                title="Icône actuelle — cliquer pour retirer"
+                onClick={() => setIcon(null)}
+              >
+                {customIcon}
+              </button>
+            )}
             <button
               type="button"
               className={`icon-opt clear ${!point.icon ? "sel" : ""}`}
@@ -103,6 +127,27 @@ export function CollapsiblePoint({
             >
               ∅
             </button>
+            {/* Saisie clavier : n'importe quel emoji via le clavier du téléphone. */}
+            <span className="icon-input-group">
+              <input
+                className="icon-input"
+                value={custom}
+                onChange={(e) => setCustom(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    applyCustom();
+                  }
+                }}
+                placeholder="⌨️😀"
+                aria-label="Saisir une icône au clavier"
+                maxLength={8}
+                disabled={busy}
+              />
+              <button type="button" className="btn xs" disabled={busy || !custom.trim()} onClick={applyCustom}>
+                OK
+              </button>
+            </span>
           </div>
           <EntryGallery entries={entries} />
           <div style={{ marginTop: 10 }}>

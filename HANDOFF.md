@@ -293,9 +293,10 @@ Teddy.
   existante pour la repositionner (geste tactile maison dans `ZoomablePhoto`,
   optimiste + `PATCH /api/points/[id]` {x,y} ; un simple tap ne déplace pas).
   Chaque point peut recevoir une **icône** (emoji, champ `Point.icon`, set atelier
-  ⚠️⚡🔌🔧… + « aucune ») via le sélecteur dans l'accordéon du point : elle occupe
-  la pastille avec le **numéro en petit badge d'angle** (correspondance conservée
-  avec la liste et le PDF). Le PDF garde les pastilles numérotées (icône = repère
+  ⚠️⚡🔌🔧… + « aucune » + **saisie clavier** pour n'importe quel emoji) via le
+  sélecteur dans l'accordéon du point : elle occupe la pastille avec le **numéro
+  en petit badge d'angle** (correspondance conservée avec la liste et le PDF).
+  `normalizeIcon` ne garde que le premier graphème (emoji composés gérés). Le PDF garde les pastilles numérotées (icône = repère
   in-app). Vérifié sur viewport mobile avec de vrais gestes tactiles (glisser
   persisté en base, tap sans déplacement, icône persistée + rendue).
 - Software timeline, Journal (ajout rapide + lien pièce optionnel).
