@@ -71,6 +71,7 @@ export function CollapsiblePoint({
   const [busy, setBusy] = useState(false);
   const [custom, setCustom] = useState("");
   const [linking, setLinking] = useState(false);
+  const [editing, setEditing] = useState(false); // panneau « Personnaliser »
 
   async function removeLink(linkId: string) {
     setBusy(true);
@@ -150,6 +151,26 @@ export function CollapsiblePoint({
 
       {open && (
         <div className="point-body">
+          {/* Infos d'abord : historique + ajout. */}
+          <EntryGallery entries={entries} />
+          <div style={{ marginTop: 10 }}>
+            <EntryComposer type="point" pointId={point.id} compact submitLabel="Ajouter une info" />
+          </div>
+
+          {/* Personnalisation repliée derrière un bouton (icône, couleur, liaisons, suppression). */}
+          <div className="point-tools">
+            <button
+              type="button"
+              className={`btn ghost xs ${editing ? "primary" : ""}`}
+              aria-expanded={editing}
+              onClick={() => setEditing((v) => !v)}
+            >
+              {editing ? "✓ Terminer" : "⚙️ Personnaliser"}
+            </button>
+          </div>
+
+          {editing && (
+          <div className="point-edit">
           <div className="icon-picker">
             <span className="icon-picker-label">Icône</span>
             {POINT_ICONS.map((ic) => (
@@ -265,20 +286,18 @@ export function CollapsiblePoint({
             </div>
           )}
 
-          <EntryGallery entries={entries} />
-          <div style={{ marginTop: 10 }}>
-            <EntryComposer type="point" pointId={point.id} compact submitLabel="Ajouter une info" />
-          </div>
           <div className="btn-row" style={{ marginTop: 10 }}>
             <span style={{ flex: 1 }} />
             <DeleteButton
               kind="point"
               id={point.id}
-              label="🗑️"
+              label="🗑️ Supprimer"
               confirmText="Supprimer ce point (et son historique) ?"
               className="btn ghost xs danger"
             />
           </div>
+          </div>
+          )}
         </div>
       )}
 

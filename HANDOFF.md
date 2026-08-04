@@ -268,6 +268,11 @@ Teddy.
   `PATCH /api/photos-ensemble/[id]` champ `url` — **les points sont conservés**
   (coords relatives) ; l'ancien fichier est purgé. Le déplacement des points
   (« ⇄ Déplacer ») existe déjà sur la vue d'ensemble comme sur la pièce.
+- **Point ouvert : infos d'abord, personnalisation repliée** : à l'ouverture d'un
+  point, on voit **seulement les infos** (galerie d'entrées + « Ajouter une info »).
+  La personnalisation (icône, couleur de zone, liaisons, suppression) est cachée
+  derrière un bouton **« ⚙️ Personnaliser »** (`.point-edit`, état `editing` dans
+  `CollapsiblePoint`).
 - **Accordéon des points** (`PointsAccordion`) : un seul point ouvert à la fois ;
   `CollapsiblePoint` est désormais contrôlé (open/onToggle).
 - **Boutons Supprimer discrets** partout (`btn ghost sm/xs danger`, `.danger-zone`).
