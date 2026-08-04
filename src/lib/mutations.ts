@@ -153,12 +153,27 @@ export async function updatePiece(id: string, input: { name?: unknown; category?
 // Un point a EXACTEMENT un parent : une Pièce (pieceId) ou une photo d'ensemble
 // (photoEnsembleId). Sur une photo d'ensemble, il peut être un raccourci vers
 // une Pièce (targetPieceId).
+// Dimension/relative (0..1) d'une zone, ou null.
+function normalizeDim(v: unknown): number | null {
+  if (typeof v !== "number" || !Number.isFinite(v)) return null;
+  return Math.min(1, Math.max(0, v));
+}
+// Couleur hex (#rgb / #rrggbb), ou null.
+function normalizeColor(v: unknown): string | null {
+  if (typeof v !== "string") return null;
+  const s = v.trim();
+  return /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(s) ? s : null;
+}
+
 export async function createPoint(input: {
   pieceId?: unknown;
   photoEnsembleId?: unknown;
   targetPieceId?: unknown;
   x?: unknown;
   y?: unknown;
+  w?: unknown;
+  h?: unknown;
+  color?: unknown;
   icon?: unknown;
 }) {
   const organizationId = await requireOrgId();
@@ -170,13 +185,17 @@ export async function createPoint(input: {
 
   const x = typeof input.x === "number" ? input.x : null;
   const y = typeof input.y === "number" ? input.y : null;
+  const w = normalizeDim(input.w);
+  const h = normalizeDim(input.h);
+  const color = normalizeColor(input.color);
   const icon = normalizeIcon(input.icon);
+  const shape = { x, y, w, h, color, icon };
 
   if (hasPiece) {
     const pieceId = String(input.pieceId).trim();
     await assertPiece(organizationId, pieceId);
     const max = await prisma.point.aggregate({ where: { pieceId }, _max: { num: true } });
-    return prisma.point.create({ data: { pieceId, num: (max._max.num ?? 0) + 1, x, y, icon } });
+    return prisma.point.create({ data: { pieceId, num: (max._max.num ?? 0) + 1, ...shape } });
   }
 
   // Point sur une photo d'ensemble.
@@ -188,7 +207,7 @@ export async function createPoint(input: {
     await assertPiece(organizationId, targetPieceId); // le raccourci pointe vers une pièce de l'org
   }
   const max = await prisma.point.aggregate({ where: { photoEnsembleId }, _max: { num: true } });
-  return prisma.point.create({ data: { photoEnsembleId, targetPieceId, num: (max._max.num ?? 0) + 1, x, y, icon } });
+  return prisma.point.create({ data: { photoEnsembleId, targetPieceId, num: (max._max.num ?? 0) + 1, ...shape } });
 }
 
 // Normalise une icône : garde le PREMIER graphème (un emoji, même composé de
@@ -206,7 +225,10 @@ function normalizeIcon(v: unknown): string | null {
   }
 }
 
-export async function updatePoint(id: string, input: { x?: unknown; y?: unknown; num?: unknown; icon?: unknown }) {
+export async function updatePoint(
+  id: string,
+  input: { x?: unknown; y?: unknown; w?: unknown; h?: unknown; color?: unknown; num?: unknown; icon?: unknown },
+) {
   const organizationId = await requireOrgId();
   await assertPoint(organizationId, id);
   return prisma.point.update({
@@ -214,6 +236,9 @@ export async function updatePoint(id: string, input: { x?: unknown; y?: unknown;
     data: {
       ...(input.x !== undefined ? { x: typeof input.x === "number" ? input.x : null } : {}),
       ...(input.y !== undefined ? { y: typeof input.y === "number" ? input.y : null } : {}),
+      ...(input.w !== undefined ? { w: normalizeDim(input.w) } : {}),
+      ...(input.h !== undefined ? { h: normalizeDim(input.h) } : {}),
+      ...(input.color !== undefined ? { color: normalizeColor(input.color) } : {}),
       ...(typeof input.num === "number" ? { num: input.num } : {}),
       ...(input.icon !== undefined ? { icon: normalizeIcon(input.icon) } : {}),
     },

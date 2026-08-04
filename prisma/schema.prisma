@@ -124,9 +124,14 @@ model Point {
   // Si défini : ce point (d'ensemble) est un RACCOURCI vers cette Pièce.
   targetPieceId   String?
   x               Float? // position sur la photo, null si "point libre"/virtuel
-  y               Float?
+  y               Float? // (pour une ZONE : coin haut-gauche)
+  // Si w ET h sont définis → le repère est une ZONE (rectangle), pas une pastille.
+  // Valeurs relatives (0..1) comme x/y.
+  w               Float?
+  h               Float?
+  color           String? // couleur de remplissage d'une zone (hex), transparence appliquée au rendu
   num             Int
-  icon            String? // emoji facultatif (repère visuel : ⚠️ ⚡ 🔌 …), affiché sur la pastille dans l'app
+  icon            String? // emoji facultatif (repère visuel : ⚠️ ⚡ 🔌 …), affiché sur la pastille/zone
   createdAt       DateTime  @default(now())
   deletedAt       DateTime?
 

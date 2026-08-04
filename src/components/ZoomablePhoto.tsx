@@ -6,29 +6,40 @@ export type PhotoMarker = {
   num: number;
   x: number | null;
   y: number | null;
+  // Si w ET h sont définis → ZONE (rectangle) au lieu d'une pastille.
+  w?: number | null;
+  h?: number | null;
+  color?: string | null; // couleur de remplissage d'une zone (hex)
   href: string; // "#point-<id>" (info) ou "/pieces/<id>" (raccourci)
   className?: string; // ex "shortcut"
-  icon?: string | null; // emoji facultatif affiché dans la pastille
-  // Contenu de la bulle d'aperçu (au tap sur la pastille) :
-  title?: string; // dernière info / nom de la pièce
-  meta?: string; // ex "2 infos · 1 📷"
-  thumb?: string | null; // vignette photo
-  actionLabel?: string; // libellé du bouton (défaut « Détail › »)
-  links?: { label: string; href: string }[]; // liaisons vers d'autres repères
+  icon?: string | null; // emoji facultatif affiché dans la pastille/zone
+  // Contenu de la bulle d'aperçu (au tap/survol) :
+  title?: string;
+  meta?: string;
+  thumb?: string | null;
+  actionLabel?: string;
+  links?: { label: string; href: string }[];
 };
 
 const MIN_SCALE = 1;
 const MAX_SCALE = 6;
-const TAP_MOVE_TOL = 8;
-const TAP_MAX_MS = 400;
+const MIN_ZONE = 0.03; // taille min d'une zone (relative) au tracé
 const DOUBLE_TAP_MS = 300;
+const ACCENT = "#4f8cff";
 const clamp = (v: number, a: number, b: number) => Math.min(b, Math.max(a, v));
 const dist = (a: { x: number; y: number }, b: { x: number; y: number }) => Math.hypot(a.x - b.x, a.y - b.y);
+function hexToRgba(hex: string, a: number): string {
+  let h = hex.replace("#", "");
+  if (h.length === 3) h = h.split("").map((c) => c + c).join("");
+  const n = parseInt(h, 16);
+  return `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, ${a})`;
+}
 
-// Cœur réutilisable de la photo annotée (pièce OU photo d'ensemble) :
-// pinch-to-zoom, pan, double-tap, pastilles à taille écran constante, et
-// placement d'un point aux coordonnées EXACTES (rect transformé de l'image).
-// Ne connaît rien du domaine : signale un placement via `onPlace(x, y)`.
+type Rect = { x: number; y: number; w?: number; h?: number };
+
+// Cœur réutilisable de la photo annotée : pinch-zoom, pan, pastilles à taille
+// écran constante, placement de point, et ZONES (rectangles) qu'on peut tracer,
+// déplacer et redimensionner. Ne connaît rien du domaine.
 export function ZoomablePhoto({
   photoUrl,
   markers,
@@ -36,21 +47,23 @@ export function ZoomablePhoto({
   onPlace,
   moving = false,
   onMove,
+  drawingZone = false,
+  onDrawZone,
   alt = "Photo",
 }: {
   photoUrl: string;
   markers: PhotoMarker[];
   placing: boolean;
   onPlace: (x: number, y: number) => void;
-  moving?: boolean; // mode « déplacer » : on fait glisser les pastilles existantes
-  onMove?: (id: string, x: number, y: number) => void;
+  moving?: boolean;
+  onMove?: (id: string, x: number, y: number, w?: number, h?: number) => void;
+  drawingZone?: boolean; // mode « tracer une zone »
+  onDrawZone?: (x: number, y: number, w: number, h: number) => void;
   alt?: string;
 }) {
   const [zoomed, setZoomed] = useState(false);
-  // Positions provisoires pendant/après un glisser (optimiste, évite le clignotement
-  // le temps que le serveur renvoie les nouvelles coordonnées).
-  const [overrides, setOverrides] = useState<Record<string, { x: number; y: number }>>({});
-  // Bulle d'aperçu affichée sur l'image au tap d'une pastille.
+  const [overrides, setOverrides] = useState<Record<string, Rect>>({});
+  const [zoneDraw, setZoneDraw] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
   const [bubble, setBubble] = useState<{ id: string; left: number; top: number; above: boolean } | null>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
@@ -60,30 +73,61 @@ export function ZoomablePhoto({
   placingRef.current = placing;
   const movingRef = useRef(moving);
   movingRef.current = moving;
+  const drawingRef = useRef(drawingZone);
+  drawingRef.current = drawingZone;
+  const closeTimer = useRef(0);
 
   const tf = useRef({ scale: 1, tx: 0, ty: 0 });
   const pointers = useRef<Map<number, { x: number; y: number }>>(new Map());
-  const g = useRef({ startX: 0, startY: 0, startTime: 0, prevMidX: 0, prevMidY: 0, prevDist: 0, moved: false, pinched: false, onMarker: false, lastTapTime: 0, dragId: "" as string, dragPointerId: -1, dragX: 0, dragY: 0, dragMoved: false, markerEl: null as HTMLElement | null });
+  const g = useRef({
+    startX: 0, startY: 0, startTime: 0, prevMidX: 0, prevMidY: 0, prevDist: 0, moved: false, pinched: false,
+    onMarker: false, lastTapTime: 0, markerEl: null as HTMLElement | null,
+    dragKind: "" as "" | "marker" | "zone-move" | "zone-resize" | "zone-draw",
+    dragId: "", dragPointerId: -1, dragMoved: false,
+    rect: { x: 0, y: 0, w: 0, h: 0 }, // rect courant (zone) / position (marker)
+    grabOx: 0, grabOy: 0, ax: 0, ay: 0, sx: 0, sy: 0,
+  });
   const rafId = useRef(0);
 
-  // En mode placer/déplacer, pas de bulle d'aperçu.
   useEffect(() => {
-    if (placing || moving) setBubble(null);
-  }, [placing, moving]);
+    if (placing || moving || drawingZone) setBubble(null);
+  }, [placing, moving, drawingZone]);
 
-  // Ouvre la bulle au-dessus (ou en dessous) de la pastille tapée.
+  // Coordonnées relatives (0..1) depuis un point écran (rect transformé de l'image).
+  const relFrom = useCallback((cx: number, cy: number) => {
+    const el = imgRef.current;
+    if (!el) return { x: 0, y: 0 };
+    const r = el.getBoundingClientRect();
+    return { x: clamp((cx - r.left) / r.width, 0, 1), y: clamp((cy - r.top) / r.height, 0, 1) };
+  }, []);
+
+  const rectOf = useCallback(
+    (id: string): Rect => {
+      const o = overrides[id];
+      if (o) return o;
+      const m = markers.find((mk) => mk.id === id);
+      return { x: m?.x ?? 0, y: m?.y ?? 0, w: m?.w ?? undefined, h: m?.h ?? undefined };
+    },
+    [overrides, markers],
+  );
+
   function openBubble(el: HTMLElement, id: string) {
     const wrap = wrapRef.current;
     if (!wrap) return;
     const m = el.getBoundingClientRect();
     const w = wrap.getBoundingClientRect();
     const cx = m.left + m.width / 2 - w.left;
-    const cy = m.top + m.height / 2 - w.top;
+    const cy = m.top - w.top; // haut de la forme
     const half = 118;
     const left = clamp(cx, half, Math.max(half, w.width - half));
-    const above = cy > 140;
-    setBubble({ id, left, top: above ? cy - 22 : cy + 22, above });
+    const above = cy > 150;
+    setBubble({ id, left, top: above ? cy - 10 : m.bottom - w.top + 10, above });
   }
+  const scheduleClose = useCallback(() => {
+    window.clearTimeout(closeTimer.current);
+    closeTimer.current = window.setTimeout(() => setBubble(null), 180);
+  }, []);
+  const cancelClose = useCallback(() => window.clearTimeout(closeTimer.current), []);
 
   const applyTransform = useCallback(() => {
     const c = contentRef.current;
@@ -92,11 +136,9 @@ export function ZoomablePhoto({
     c.style.transform = `translate(${tx}px, ${ty}px) scale(${scale})`;
     c.style.setProperty("--inv-scale", String(1 / scale));
   }, []);
-
   useEffect(() => {
     applyTransform();
   });
-
   const scheduleApply = useCallback(() => {
     if (rafId.current) return;
     rafId.current = requestAnimationFrame(() => {
@@ -108,11 +150,9 @@ export function ZoomablePhoto({
   const clampPan = useCallback(() => {
     const stage = stageRef.current;
     if (!stage) return;
-    const w = stage.clientWidth;
-    const h = stage.clientHeight;
     const s = tf.current.scale;
-    tf.current.tx = clamp(tf.current.tx, w * (1 - s), 0);
-    tf.current.ty = clamp(tf.current.ty, h * (1 - s), 0);
+    tf.current.tx = clamp(tf.current.tx, stage.clientWidth * (1 - s), 0);
+    tf.current.ty = clamp(tf.current.ty, stage.clientHeight * (1 - s), 0);
   }, []);
 
   function zoomAround(cx: number, cy: number, nextScale: number) {
@@ -130,7 +170,6 @@ export function ZoomablePhoto({
     applyTransform();
     setZoomed(s1 > 1.01);
   }
-
   function resetZoom() {
     tf.current = { scale: 1, tx: 0, ty: 0 };
     applyTransform();
@@ -139,10 +178,8 @@ export function ZoomablePhoto({
 
   function handleTap(clientX: number, clientY: number) {
     if (placingRef.current) {
-      const el = imgRef.current;
-      if (!el) return;
-      const rect = el.getBoundingClientRect(); // reflète zoom + pan
-      onPlace(clamp((clientX - rect.left) / rect.width, 0, 1), clamp((clientY - rect.top) / rect.height, 0, 1));
+      const p = relFrom(clientX, clientY);
+      onPlace(p.x, p.y);
       return;
     }
     const now = performance.now();
@@ -156,27 +193,77 @@ export function ZoomablePhoto({
   }
 
   function onPointerDown(e: React.PointerEvent<HTMLDivElement>) {
-    const markerEl = (e.target as Element).closest?.(".marker") as HTMLElement | null;
-    if (markerEl) {
-      // Mode « déplacer » : on démarre le glisser de CETTE pastille.
-      if (movingRef.current && !g.current.dragId) {
-        const id = markerEl.dataset.pointId;
-        if (id) {
-          g.current.dragId = id;
-          g.current.dragPointerId = e.pointerId;
-          g.current.dragMoved = false;
-          stageRef.current?.setPointerCapture(e.pointerId);
-          e.preventDefault();
-        }
-        return;
-      }
-      g.current.onMarker = true;
-      g.current.markerEl = markerEl;
+    if (g.current.dragKind) return; // un geste zone/pastille est déjà en cours
+    const t = e.target as Element;
+    const handleEl = t.closest?.(".zone-handle") as HTMLElement | null;
+    const shapeEl = t.closest?.(".marker, .zone") as HTMLElement | null;
+
+    // 1) Redimensionner une zone (mode déplacer).
+    if (movingRef.current && handleEl) {
+      const id = handleEl.dataset.pointId!;
+      const corner = handleEl.dataset.corner!;
+      const r = rectOf(id);
+      const w = r.w ?? 0;
+      const h = r.h ?? 0;
+      // Ancre = coin opposé (fixe pendant le redimensionnement).
+      g.current.ax = corner === "nw" || corner === "sw" ? r.x + w : r.x;
+      g.current.ay = corner === "nw" || corner === "ne" ? r.y + h : r.y;
+      g.current.dragKind = "zone-resize";
+      g.current.dragId = id;
+      g.current.dragPointerId = e.pointerId;
+      g.current.dragMoved = false;
+      stageRef.current?.setPointerCapture(e.pointerId);
+      e.preventDefault();
       return;
     }
+
+    // 2) Déplacer une pastille / zone (mode déplacer).
+    if (shapeEl) {
+      if (movingRef.current) {
+        const id = shapeEl.dataset.pointId!;
+        const isZone = shapeEl.classList.contains("zone");
+        const r = rectOf(id);
+        if (isZone) {
+          const p = relFrom(e.clientX, e.clientY);
+          g.current.grabOx = p.x - r.x;
+          g.current.grabOy = p.y - r.y;
+          g.current.rect = { x: r.x, y: r.y, w: r.w ?? 0, h: r.h ?? 0 };
+          g.current.dragKind = "zone-move";
+        } else {
+          g.current.dragKind = "marker";
+        }
+        g.current.dragId = id;
+        g.current.dragPointerId = e.pointerId;
+        g.current.dragMoved = false;
+        stageRef.current?.setPointerCapture(e.pointerId);
+        e.preventDefault();
+        return;
+      }
+      // Mode normal : tap → bulle.
+      g.current.onMarker = true;
+      g.current.markerEl = shapeEl;
+      return;
+    }
+
+    // 3) Tracer une zone (mode zone).
+    if (drawingRef.current) {
+      const p = relFrom(e.clientX, e.clientY);
+      g.current.dragKind = "zone-draw";
+      g.current.sx = p.x;
+      g.current.sy = p.y;
+      g.current.dragPointerId = e.pointerId;
+      g.current.dragMoved = false;
+      g.current.rect = { x: p.x, y: p.y, w: 0, h: 0 };
+      setZoneDraw({ x: p.x, y: p.y, w: 0, h: 0 });
+      stageRef.current?.setPointerCapture(e.pointerId);
+      e.preventDefault();
+      return;
+    }
+
+    // 4) Pan / pinch.
     g.current.onMarker = false;
     g.current.markerEl = null;
-    setBubble(null); // tap hors pastille / début de pan → ferme la bulle
+    setBubble(null);
     stageRef.current?.setPointerCapture(e.pointerId);
     pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
     const pts = [...pointers.current.values()];
@@ -197,19 +284,38 @@ export function ZoomablePhoto({
   }
 
   function onPointerMove(e: React.PointerEvent<HTMLDivElement>) {
-    // Glisser d'une pastille (mode déplacer) : coords depuis le rect transformé.
-    if (g.current.dragId && e.pointerId === g.current.dragPointerId) {
+    const k = g.current.dragKind;
+    if (k && e.pointerId === g.current.dragPointerId) {
       e.preventDefault();
-      const el = imgRef.current;
-      if (!el) return;
-      const rect = el.getBoundingClientRect();
-      const x = clamp((e.clientX - rect.left) / rect.width, 0, 1);
-      const y = clamp((e.clientY - rect.top) / rect.height, 0, 1);
-      g.current.dragX = x;
-      g.current.dragY = y;
-      g.current.dragMoved = true;
-      const id = g.current.dragId;
-      setOverrides((o) => ({ ...o, [id]: { x, y } }));
+      const p = relFrom(e.clientX, e.clientY);
+      if (k === "marker") {
+        g.current.rect = { x: p.x, y: p.y, w: 0, h: 0 };
+        g.current.dragMoved = true;
+        setOverrides((o) => ({ ...o, [g.current.dragId]: { x: p.x, y: p.y } }));
+      } else if (k === "zone-move") {
+        const { w, h } = g.current.rect;
+        const x = clamp(p.x - g.current.grabOx, 0, 1 - w);
+        const y = clamp(p.y - g.current.grabOy, 0, 1 - h);
+        g.current.rect = { x, y, w, h };
+        g.current.dragMoved = true;
+        setOverrides((o) => ({ ...o, [g.current.dragId]: { x, y, w, h } }));
+      } else if (k === "zone-resize") {
+        const x = Math.min(g.current.ax, p.x);
+        const y = Math.min(g.current.ay, p.y);
+        const w = Math.abs(p.x - g.current.ax);
+        const h = Math.abs(p.y - g.current.ay);
+        g.current.rect = { x, y, w, h };
+        g.current.dragMoved = true;
+        setOverrides((o) => ({ ...o, [g.current.dragId]: { x, y, w, h } }));
+      } else if (k === "zone-draw") {
+        const x = Math.min(g.current.sx, p.x);
+        const y = Math.min(g.current.sy, p.y);
+        const w = Math.abs(p.x - g.current.sx);
+        const h = Math.abs(p.y - g.current.sy);
+        g.current.rect = { x, y, w, h };
+        g.current.dragMoved = w > MIN_ZONE || h > MIN_ZONE;
+        setZoneDraw({ x, y, w, h });
+      }
       return;
     }
     if (!pointers.current.has(e.pointerId)) return;
@@ -237,7 +343,7 @@ export function ZoomablePhoto({
       clampPan();
       scheduleApply();
     } else if (pts.length === 1) {
-      if (Math.abs(e.clientX - g.current.startX) > TAP_MOVE_TOL || Math.abs(e.clientY - g.current.startY) > TAP_MOVE_TOL) g.current.moved = true;
+      if (Math.abs(e.clientX - g.current.startX) > 8 || Math.abs(e.clientY - g.current.startY) > 8) g.current.moved = true;
       if (tf.current.scale > 1.01) {
         e.preventDefault();
         tf.current.tx += e.clientX - g.current.prevMidX;
@@ -251,21 +357,25 @@ export function ZoomablePhoto({
   }
 
   function onPointerUp(e: React.PointerEvent<HTMLDivElement>) {
-    // Fin d'un glisser de pastille → on persiste les nouvelles coordonnées.
-    if (g.current.dragId && e.pointerId === g.current.dragPointerId) {
-      const id = g.current.dragId;
-      const { dragX, dragY, dragMoved } = g.current;
+    const k = g.current.dragKind;
+    if (k && e.pointerId === g.current.dragPointerId) {
+      const { dragId, dragMoved, rect } = g.current;
+      g.current.dragKind = "";
       g.current.dragId = "";
       g.current.dragPointerId = -1;
       stageRef.current?.releasePointerCapture?.(e.pointerId);
-      // Un simple tap (sans glisser) ne doit PAS repositionner le point.
-      if (dragMoved) onMove?.(id, dragX, dragY);
+      if (k === "zone-draw") {
+        setZoneDraw(null);
+        if (dragMoved && rect.w > MIN_ZONE && rect.h > MIN_ZONE) onDrawZone?.(rect.x, rect.y, rect.w, rect.h);
+      } else if (dragMoved) {
+        if (k === "marker") onMove?.(dragId, rect.x, rect.y);
+        else onMove?.(dragId, rect.x, rect.y, rect.w, rect.h);
+      }
       return;
     }
     if (g.current.onMarker) {
       g.current.onMarker = false;
-      // Tap sur une pastille (hors placer/déplacer) → bulle d'aperçu sur l'image.
-      if (!placingRef.current && !movingRef.current && g.current.markerEl) {
+      if (!placingRef.current && !movingRef.current && !drawingRef.current && g.current.markerEl) {
         openBubble(g.current.markerEl, g.current.markerEl.dataset.pointId ?? "");
       }
       return;
@@ -277,27 +387,39 @@ export function ZoomablePhoto({
     pointers.current.delete(e.pointerId);
     stageRef.current?.releasePointerCapture?.(e.pointerId);
     if (pointers.current.size === 0) {
-      const isTap = single && !g.current.moved && !g.current.pinched && performance.now() - g.current.startTime < TAP_MAX_MS;
+      const isTap = single && !g.current.moved && !g.current.pinched && performance.now() - g.current.startTime < 400;
       if (isTap) handleTap(upX, upY);
       setZoomed(tf.current.scale > 1.01);
       g.current.pinched = false;
     }
   }
 
+  // Survol (souris) : ouvre la bulle ; se referme en quittant la forme et la bulle.
+  function onShapeEnter(e: React.PointerEvent, el: HTMLElement, id: string) {
+    if (e.pointerType !== "mouse") return;
+    if (placingRef.current || movingRef.current || drawingRef.current) return;
+    cancelClose();
+    openBubble(el, id);
+  }
+  function onShapeLeave(e: React.PointerEvent) {
+    if (e.pointerType !== "mouse") return;
+    scheduleClose();
+  }
+
   const placed = markers
     .filter((p) => p.x != null && p.y != null)
     .map((p) => {
       const o = overrides[p.id];
-      return o ? { ...p, x: o.x, y: o.y } : p;
+      return o ? { ...p, x: o.x, y: o.y, w: o.w ?? p.w, h: o.h ?? p.h } : p;
     });
-
   const activeMarker = bubble ? markers.find((m) => m.id === bubble.id) : null;
+  const CORNERS = ["nw", "ne", "sw", "se"] as const;
 
   return (
     <div ref={wrapRef} className="annotator-wrap">
       <div
         ref={stageRef}
-        className={`annotator ${placing ? "placing" : ""} ${moving ? "moving" : ""}`}
+        className={`annotator ${placing ? "placing" : ""} ${moving ? "moving" : ""} ${drawingZone ? "drawing" : ""}`}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
@@ -306,30 +428,83 @@ export function ZoomablePhoto({
         <div ref={contentRef} className="annotator-content">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img ref={imgRef} src={photoUrl} alt={alt} draggable={false} />
-          {placed.map((p) => (
-            <a
-              key={p.id}
-              data-point-id={p.id}
-              href={p.href}
-              // La navigation passe par la bulle (bouton « Détail ») → on neutralise
-              // le clic direct de la pastille (tap = ouvrir la bulle).
-              onClick={(e) => e.preventDefault()}
-              className={`marker ${p.className ?? ""} ${p.icon ? "has-icon" : ""} ${moving ? "movable" : ""} ${
-                bubble?.id === p.id ? "active" : ""
-              }`}
-              style={{ left: `${(p.x as number) * 100}%`, top: `${(p.y as number) * 100}%` }}
-            >
-              {p.icon ? (
-                <>
-                  <span className="marker-glyph">{p.icon}</span>
-                  <span className="marker-badge">{p.num}</span>
-                </>
-              ) : (
-                <span className="marker-glyph">{p.num}</span>
-              )}
-              {p.links && p.links.length > 0 && <span className="marker-link-badge">🔗</span>}
-            </a>
-          ))}
+
+          {placed.map((p) => {
+            const isZone = p.w != null && p.h != null;
+            const active = bubble?.id === p.id;
+            if (isZone) {
+              const col = p.color || ACCENT;
+              return (
+                <a
+                  key={p.id}
+                  data-point-id={p.id}
+                  href={p.href}
+                  onClick={(e) => e.preventDefault()}
+                  onPointerEnter={(e) => onShapeEnter(e, e.currentTarget, p.id)}
+                  onPointerLeave={onShapeLeave}
+                  className={`zone ${moving ? "movable" : ""} ${active ? "active" : ""}`}
+                  style={{
+                    left: `${(p.x as number) * 100}%`,
+                    top: `${(p.y as number) * 100}%`,
+                    width: `${(p.w as number) * 100}%`,
+                    height: `${(p.h as number) * 100}%`,
+                    background: hexToRgba(col, 0.22),
+                    borderColor: col,
+                  }}
+                >
+                  <span className="zone-label" style={{ background: col }}>
+                    {p.icon ? (
+                      <>
+                        {p.icon}
+                        <b className="zone-num">{p.num}</b>
+                      </>
+                    ) : (
+                      p.num
+                    )}
+                  </span>
+                  {p.links && p.links.length > 0 && <span className="zone-link-badge">🔗</span>}
+                  {moving &&
+                    CORNERS.map((c) => (
+                      <span key={c} className={`zone-handle h-${c}`} data-corner={c} data-point-id={p.id} />
+                    ))}
+                </a>
+              );
+            }
+            return (
+              <a
+                key={p.id}
+                data-point-id={p.id}
+                href={p.href}
+                onClick={(e) => e.preventDefault()}
+                onPointerEnter={(e) => onShapeEnter(e, e.currentTarget, p.id)}
+                onPointerLeave={onShapeLeave}
+                className={`marker ${p.className ?? ""} ${p.icon ? "has-icon" : ""} ${moving ? "movable" : ""} ${active ? "active" : ""}`}
+                style={{ left: `${(p.x as number) * 100}%`, top: `${(p.y as number) * 100}%` }}
+              >
+                {p.icon ? (
+                  <>
+                    <span className="marker-glyph">{p.icon}</span>
+                    <span className="marker-badge">{p.num}</span>
+                  </>
+                ) : (
+                  <span className="marker-glyph">{p.num}</span>
+                )}
+                {p.links && p.links.length > 0 && <span className="marker-link-badge">🔗</span>}
+              </a>
+            );
+          })}
+
+          {zoneDraw && (
+            <div
+              className="zone zone-preview"
+              style={{
+                left: `${zoneDraw.x * 100}%`,
+                top: `${zoneDraw.y * 100}%`,
+                width: `${zoneDraw.w * 100}%`,
+                height: `${zoneDraw.h * 100}%`,
+              }}
+            />
+          )}
         </div>
         {zoomed && (
           <button type="button" className="zoom-reset" onClick={resetZoom} aria-label="Réinitialiser le zoom">
@@ -343,6 +518,8 @@ export function ZoomablePhoto({
           className={`marker-bubble ${bubble.above ? "above" : "below"}`}
           style={{ left: bubble.left, top: bubble.top }}
           role="dialog"
+          onPointerEnter={cancelClose}
+          onPointerLeave={onShapeLeave}
         >
           <button type="button" className="marker-bubble-close" onClick={() => setBubble(null)} aria-label="Fermer">
             ✕

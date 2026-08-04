@@ -37,7 +37,7 @@ export default async function PiecePage({ params }: { params: Promise<{ pieceId:
       label: `${c.pieceName} · Point ${c.num}${c.label ? ` (${c.label})` : ""}`,
       href: `/pieces/${c.pieceId}#point-${c.pointId}`,
     }));
-    return { id: p.id, num: p.num, x: p.x, y: p.y, icon: p.icon, title, meta, thumb, links };
+    return { id: p.id, num: p.num, x: p.x, y: p.y, w: p.w, h: p.h, color: p.color, icon: p.icon, title, meta, thumb, links };
   });
 
   return (
@@ -73,7 +73,7 @@ export default async function PiecePage({ params }: { params: Promise<{ pieceId:
 
           <PointsAccordion
             items={piece.points.map((point) => ({
-              point: { id: point.id, num: point.num, x: point.x, y: point.y, icon: point.icon },
+              point: { id: point.id, num: point.num, x: point.x, y: point.y, w: point.w, h: point.h, color: point.color, icon: point.icon },
               entries: point.entries as unknown as EntryData[],
               links: linksByPoint.get(point.id) ?? [],
             }))}

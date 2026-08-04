@@ -9,6 +9,9 @@ type PointMarker = {
   num: number;
   x: number | null;
   y: number | null;
+  w?: number | null;
+  h?: number | null;
+  color?: string | null;
   icon?: string | null;
   title?: string;
   meta?: string;
@@ -29,11 +32,24 @@ export function PhotoAnnotator({
   const router = useRouter();
   const [placing, setPlacing] = useState(false);
   const [moving, setMoving] = useState(false);
+  const [drawingZone, setDrawingZone] = useState(false);
   const [busy, setBusy] = useState(false);
 
-  async function movePoint(id: string, x: number, y: number) {
-    await api.updatePoint(id, { x, y });
+  async function movePoint(id: string, x: number, y: number, w?: number, h?: number) {
+    await api.updatePoint(id, w != null && h != null ? { x, y, w, h } : { x, y });
     router.refresh();
+  }
+
+  async function drawZone(x: number, y: number, w: number, h: number) {
+    if (busy) return;
+    setBusy(true);
+    try {
+      const pt = await api.createPoint({ pieceId, x, y, w, h });
+      setDrawingZone(false);
+      openNewPoint((pt as { id: string }).id);
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function setPhoto(files: FileList | null) {
@@ -98,29 +114,40 @@ export function PhotoAnnotator({
         onPlace={place}
         moving={moving}
         onMove={movePoint}
+        drawingZone={drawingZone}
+        onDrawZone={drawZone}
         alt="Pièce"
       />
       <p className="hint">
         {placing
           ? "Touchez la photo à l’endroit du point (zoomez d’abord pour plus de précision)."
-          : moving
-            ? "Glissez une pastille pour la repositionner (zoomez d’abord pour plus de précision)."
-            : "Pincez pour zoomer · glissez pour déplacer · double-tap pour (dé)zoomer."}
+          : drawingZone
+            ? "Glissez sur la photo pour tracer un rectangle (la zone)."
+            : moving
+              ? "Glissez une pastille/zone pour la déplacer ; les poignées d’angle redimensionnent."
+              : "Pincez pour zoomer · glissez pour déplacer · double-tap pour (dé)zoomer."}
       </p>
       <div className="btn-row" style={{ marginTop: 10 }}>
         <button
           className={`btn sm ${placing ? "primary" : ""}`}
-          disabled={busy || moving}
+          disabled={busy || moving || drawingZone}
           onClick={() => setPlacing((v) => !v)}
         >
           {placing ? "① Touchez la photo…" : "＋ Placer un point"}
         </button>
-        <button className="btn sm" disabled={busy || moving || placing} onClick={addFreePoint}>
+        <button
+          className={`btn sm ${drawingZone ? "primary" : ""}`}
+          disabled={busy || moving || placing}
+          onClick={() => setDrawingZone((v) => !v)}
+        >
+          {drawingZone ? "① Tracez la zone…" : "▭ Zone"}
+        </button>
+        <button className="btn sm" disabled={busy || moving || placing || drawingZone} onClick={addFreePoint}>
           ＋ Point libre
         </button>
         <button
           className={`btn sm ${moving ? "primary" : ""}`}
-          disabled={busy || placing}
+          disabled={busy || placing || drawingZone}
           onClick={() => setMoving((v) => !v)}
         >
           {moving ? "✓ Terminer" : "⇄ Déplacer"}

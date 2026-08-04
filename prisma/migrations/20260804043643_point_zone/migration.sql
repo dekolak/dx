@@ -1,0 +1,4 @@
+-- AlterTable
+ALTER TABLE "Point" ADD COLUMN     "color" TEXT,
+ADD COLUMN     "h" DOUBLE PRECISION,
+ADD COLUMN     "w" DOUBLE PRECISION;
