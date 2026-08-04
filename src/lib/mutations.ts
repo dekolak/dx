@@ -386,13 +386,20 @@ export async function createPhotoEnsemble(input: { installationId?: unknown; url
   });
 }
 
-export async function updatePhotoEnsemble(id: string, input: { label?: unknown }) {
+export async function updatePhotoEnsemble(id: string, input: { label?: unknown; url?: unknown }) {
   const organizationId = await requireOrgId();
-  await assertPhotoEnsemble(organizationId, id);
-  return prisma.photoEnsemble.update({
-    where: { id },
-    data: { ...(input.label !== undefined ? { label: optStr(input.label) } : {}) },
-  });
+  const pe = await assertPhotoEnsemble(organizationId, id);
+  const data: { label?: string | null; url?: string } = {};
+  if (input.label !== undefined) data.label = optStr(input.label);
+  // Remplacement de la photo (on garde les points, coords relatives conservées).
+  let oldUrl: string | null = null;
+  if (typeof input.url === "string" && input.url.trim().startsWith("/api/media/")) {
+    data.url = input.url.trim();
+    if (pe.url && pe.url !== data.url) oldUrl = pe.url;
+  }
+  const res = await prisma.photoEnsemble.update({ where: { id }, data });
+  if (oldUrl) await deleteMediaByUrl(oldUrl); // best-effort : purge l'ancien fichier
+  return res;
 }
 
 /** Réordonne les photos d'ensemble d'une installation (sortOrder = position). */

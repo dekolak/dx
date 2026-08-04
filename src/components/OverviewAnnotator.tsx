@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { api } from "@/lib/client";
+import { api, uploadFile } from "@/lib/client";
 import { ZoomablePhoto, type PhotoMarker } from "@/components/ZoomablePhoto";
 
 type OverviewPoint = {
@@ -36,9 +36,21 @@ export function OverviewAnnotator({
   const [moving, setMoving] = useState(false);
   const [busy, setBusy] = useState(false);
 
-  async function movePoint(id: string, x: number, y: number) {
-    await api.updatePoint(id, { x, y });
+  async function movePoint(id: string, x: number, y: number, w?: number, h?: number) {
+    await api.updatePoint(id, w != null && h != null ? { x, y, w, h } : { x, y });
     router.refresh();
+  }
+
+  async function changePhoto(files: FileList | null) {
+    if (!files?.[0]) return;
+    setBusy(true);
+    try {
+      const media = await uploadFile(files[0]);
+      await api.updatePhotoEnsemble(photoEnsembleId, { url: media.url });
+      router.refresh();
+    } finally {
+      setBusy(false);
+    }
   }
   const [pending, setPending] = useState<{ x: number; y: number } | null>(null);
   const [choicePiece, setChoicePiece] = useState("");
@@ -173,6 +185,10 @@ export function OverviewAnnotator({
         <button className={`btn sm ${moving ? "primary" : ""}`} disabled={busy || placing} onClick={() => setMoving((v) => !v)}>
           {moving ? "✓ Terminer" : "⇄ Déplacer"}
         </button>
+        <label className="btn sm ghost" style={{ marginLeft: "auto" }}>
+          Changer la photo
+          <input type="file" accept="image/*" hidden disabled={busy} onChange={(e) => changePhoto(e.target.files)} />
+        </label>
       </div>
 
       {pending && (
