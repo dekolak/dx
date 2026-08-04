@@ -264,6 +264,10 @@ Teddy.
   `OverviewReorder` (affiché dès 2 photos) → `POST /api/photos-ensemble/reorder`.
   Libellé par photo éditable en place (`PATCH /api/photos-ensemble/[id]`, champ
   `label`). Vérifié mobile (drag tactile, persistance, édition libellé).
+  **Remplacer la photo d'ensemble** (bouton « Changer la photo ») : upload +
+  `PATCH /api/photos-ensemble/[id]` champ `url` — **les points sont conservés**
+  (coords relatives) ; l'ancien fichier est purgé. Le déplacement des points
+  (« ⇄ Déplacer ») existe déjà sur la vue d'ensemble comme sur la pièce.
 - **Accordéon des points** (`PointsAccordion`) : un seul point ouvert à la fois ;
   `CollapsiblePoint` est désormais contrôlé (open/onToggle).
 - **Boutons Supprimer discrets** partout (`btn ghost sm/xs danger`, `.danger-zone`).
