@@ -1328,3 +1328,15 @@ label {
   background: var(--surface-2);
   cursor: pointer;
 }
+
+/* Point ouvert : bouton « Personnaliser » + panneau replié. */
+.point-tools {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 12px;
+}
+.point-edit {
+  margin-top: 12px;
+  padding-top: 14px;
+  border-top: 1px dashed var(--border);
+}
