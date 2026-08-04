@@ -343,6 +343,16 @@ Teddy.
   s'affichent sur la fiche cible** (`LinkedJournalNotes` sur pièce /
   installation / logiciel) — lien visible dans les deux sens. `listJournalTargets`
   fournit les cibles groupées. Vérifié sur mobile.
+- **Zones (rectangles) sur la photo annotée** : un « point » avec `w`/`h`
+  (relatifs) est une ZONE au lieu d'une pastille — `Point.w`/`h`/`color`
+  (migration additive). Bouton « ▭ Zone » → on trace en glissant ; en mode
+  « ⇄ Déplacer » on **déplace** (glisser le corps) et **redimensionne**
+  (poignées d'angle) ; **couleur transparente réglable** (palette + `<input
+  type=color>`) et **icône** dans l'accordéon. Info **au survol (souris)** ou
+  **au tap (mobile)** via la bulle. Rendu aussi dans le **PDF** (rectangle
+  coloré + n°). Réutilise tout l'existant (accordéon, liaisons, entrées). Le
+  moteur (`ZoomablePhoto`) gère draw/move/resize + survol ; `onMove` étendu à
+  `(id,x,y,w?,h?)`. Vérifié desktop (souris) + mobile (tactile).
 - **Fiche pièce en 2 colonnes sur ordinateur** (≥ 900 px) : photo à gauche
   (sticky) + points à droite (`.piece-cols`, conteneur élargi via
   `.app:has(.piece-cols)`) ; empilé sur mobile. **Pastilles plus compactes par

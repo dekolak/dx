@@ -9,7 +9,19 @@ import { EntryComposer } from "@/components/EntryComposer";
 import { DeleteButton } from "@/components/DeleteButton";
 import { LinkPointModal } from "@/components/LinkPointModal";
 
-type PointData = { id: string; num: number; x: number | null; y: number | null; icon?: string | null };
+type PointData = {
+  id: string;
+  num: number;
+  x: number | null;
+  y: number | null;
+  w?: number | null;
+  h?: number | null;
+  color?: string | null;
+  icon?: string | null;
+};
+
+// Couleurs prêtes pour une zone.
+export const ZONE_COLORS = ["#4f8cff", "#ff5c5c", "#46d19e", "#ffb020", "#c46bff", "#ff7ab8", "#26c6da", "#9aa2b1"];
 
 // Une liaison affichée : l'autre repère (pièce · n° · icône) + libellé.
 export type LinkChip = {
@@ -85,6 +97,18 @@ export function CollapsiblePoint({
     }
   }
 
+  async function setColor(color: string) {
+    setBusy(true);
+    try {
+      await api.updatePoint(point.id, { color });
+      router.refresh();
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const isZone = point.w != null && point.h != null;
+
   // Applique l'emoji tapé au clavier (le serveur ne garde que le 1er graphème).
   async function applyCustom() {
     const v = custom.trim();
@@ -111,7 +135,7 @@ export function CollapsiblePoint({
         <span className="point-header-main">
           <span className="point-header-line1">
             {point.icon && <span className="point-icon-tag">{point.icon}</span>}
-            <span className="pill point-pill">Point {point.num}</span>
+            <span className="pill point-pill">{isZone ? "Zone" : "Point"} {point.num}</span>
             {point.x == null && <span className="pill">libre</span>}
             {links.length > 0 && <span className="pill link-pill" title="Liaisons">🔗 {links.length}</span>}
           </span>
@@ -184,6 +208,31 @@ export function CollapsiblePoint({
               </button>
             </span>
           </div>
+
+          {isZone && (
+            <div className="icon-picker">
+              <span className="icon-picker-label">Couleur</span>
+              {ZONE_COLORS.map((c) => (
+                <button
+                  key={c}
+                  type="button"
+                  className={`color-opt ${(point.color ?? ZONE_COLORS[0]) === c ? "sel" : ""}`}
+                  style={{ background: c }}
+                  disabled={busy}
+                  aria-label={`Couleur ${c}`}
+                  onClick={() => setColor(c)}
+                />
+              ))}
+              <input
+                type="color"
+                className="color-input"
+                value={point.color ?? ZONE_COLORS[0]}
+                disabled={busy}
+                aria-label="Couleur personnalisée"
+                onChange={(e) => setColor(e.target.value)}
+              />
+            </div>
+          )}
 
           {(links.length > 0 || linkTargets) && (
             <div className="link-block">

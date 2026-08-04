@@ -4,7 +4,16 @@ import type { EntryData } from "@/components/EntryCard";
 import { CollapsiblePoint, type LinkChip, type LinkTargetPiece } from "@/components/CollapsiblePoint";
 
 type Item = {
-  point: { id: string; num: number; x: number | null; y: number | null; icon?: string | null };
+  point: {
+    id: string;
+    num: number;
+    x: number | null;
+    y: number | null;
+    w?: number | null;
+    h?: number | null;
+    color?: string | null;
+    icon?: string | null;
+  };
   entries: EntryData[];
   links?: LinkChip[];
 };

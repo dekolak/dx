@@ -14,7 +14,16 @@ const ACCENT = "#4f8cff";
 type Media = { url: string; type: string };
 type Entry = { createdAt: Date | string; text: string; media: Media[] };
 type PointLinkRef = { pieceName: string; num: number; label: string | null };
-type Point = { num: number; x: number | null; y: number | null; entries: Entry[]; links?: PointLinkRef[] };
+type Point = {
+  num: number;
+  x: number | null;
+  y: number | null;
+  w?: number | null;
+  h?: number | null;
+  color?: string | null;
+  entries: Entry[];
+  links?: PointLinkRef[];
+};
 export type PdfPiece = {
   name: string;
   category: string | null;
@@ -48,6 +57,21 @@ function drawMarker(doc: Doc, cx: number, cy: number, num: number) {
   doc.circle(cx, cy, r).lineWidth(1.5).fillAndStroke(ACCENT, "#ffffff");
   doc.fillColor("#ffffff").font("Helvetica-Bold").fontSize(9);
   doc.text(String(num), cx - r, cy - 4.5, { width: 2 * r, align: "center", lineBreak: false });
+  doc.restore();
+}
+
+const HEX = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i;
+// Zone : rectangle coloré + n° en pastille dans le coin haut-gauche.
+function drawZone(doc: Doc, rx: number, ry: number, rw: number, rh: number, num: number, color: string | null | undefined) {
+  const col = color && HEX.test(color) ? color : ACCENT;
+  doc.save();
+  doc.rect(rx, ry, rw, rh).lineWidth(1.5).fillOpacity(0.18).fill(col);
+  doc.fillOpacity(1).rect(rx, ry, rw, rh).lineWidth(1.5).stroke(col);
+  // pastille numéro
+  const r = 8;
+  doc.circle(rx + r, ry + r, r).fill(col);
+  doc.fillColor("#ffffff").font("Helvetica-Bold").fontSize(8);
+  doc.text(String(num), rx, ry + r - 4, { width: 2 * r, align: "center", lineBreak: false });
   doc.restore();
 }
 
@@ -90,7 +114,11 @@ export async function buildPiecePdf(piece: PdfPiece): Promise<Buffer> {
         doc.image(img as unknown as Buffer, x, y, { width: w });
         for (const pt of piece.points) {
           if (pt.x == null || pt.y == null) continue;
-          drawMarker(doc, x + pt.x * w, y + pt.y * h, pt.num);
+          if (pt.w != null && pt.h != null) {
+            drawZone(doc, x + pt.x * w, y + pt.y * h, pt.w * w, pt.h * h, pt.num, pt.color);
+          } else {
+            drawMarker(doc, x + pt.x * w, y + pt.y * h, pt.num);
+          }
         }
         doc.y = y + h;
         doc.moveDown(0.8);
