@@ -382,26 +382,36 @@ label {
   color: var(--ok);
 }
 
-/* --- Fiche pièce : 2 colonnes sur ordinateur (photo à gauche, points à droite) --- */
-.piece-cols {
+/* --- 2 colonnes sur ordinateur (fiche pièce & fiche installation) --- */
+.piece-cols,
+.inst-cols {
   display: block; /* mobile : empilé */
 }
 @media (min-width: 900px) {
-  /* On élargit le conteneur uniquement pour la fiche pièce. */
-  .app:has(.piece-cols) {
+  /* On élargit le conteneur uniquement pour ces fiches. */
+  .app:has(.piece-cols),
+  .app:has(.inst-cols) {
     max-width: 1100px;
   }
-  .piece-cols {
+  .piece-cols,
+  .inst-cols {
     display: grid;
-    grid-template-columns: minmax(0, 460px) minmax(0, 1fr);
     gap: 24px;
     align-items: start;
+  }
+  .piece-cols {
+    grid-template-columns: minmax(0, 460px) minmax(0, 1fr);
+  }
+  .inst-cols {
+    grid-template-columns: minmax(0, 480px) minmax(0, 1fr);
   }
   .piece-photo-col {
     position: sticky;
     top: 16px;
   }
-  .piece-info-col .section-title:first-child {
+  .piece-info-col .section-title:first-child,
+  .inst-left .section-title:first-child,
+  .inst-right .section-title:first-child {
     margin-top: 0;
   }
 }

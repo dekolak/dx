@@ -353,10 +353,11 @@ Teddy.
   coloré + n°). Réutilise tout l'existant (accordéon, liaisons, entrées). Le
   moteur (`ZoomablePhoto`) gère draw/move/resize + survol ; `onMove` étendu à
   `(id,x,y,w?,h?)`. Vérifié desktop (souris) + mobile (tactile).
-- **Fiche pièce en 2 colonnes sur ordinateur** (≥ 900 px) : photo à gauche
-  (sticky) + points à droite (`.piece-cols`, conteneur élargi via
-  `.app:has(.piece-cols)`) ; empilé sur mobile. **Pastilles plus compactes par
-  défaut** (22 px, badge/icône ajustés).
+- **Fiches en 2 colonnes sur ordinateur** (≥ 900 px) : fiche **pièce** (photo
+  sticky à gauche + points à droite, `.piece-cols`) et fiche **installation**
+  (Fiche + Vue d'ensemble à gauche, Pièces + Software + Notes à droite,
+  `.inst-cols`) ; conteneur élargi via `.app:has(...)` ; empilé sur mobile.
+  **Pastilles plus compactes par défaut** (22 px, badge/icône ajustés).
 - Software timeline, Journal (ajout rapide + lien pièce optionnel).
 - Partage public `/s/[shareToken]` (testé sans cookie).
 - Soft delete + corbeille (restaurer / purger, purge = suppression fichier disque).
