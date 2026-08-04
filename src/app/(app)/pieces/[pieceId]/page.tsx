@@ -55,25 +55,32 @@ export default async function PiecePage({ params }: { params: Promise<{ pieceId:
       </div>
       {piece.category && <div className="crumbs">{piece.category}</div>}
 
-      <PhotoAnnotator pieceId={piece.id} photoUrl={piece.photoUrl} points={markers} />
+      {/* Ordinateur : 2 colonnes (photo à gauche, points à droite). Mobile : empilé. */}
+      <div className="piece-cols">
+        <div className="piece-photo-col">
+          <PhotoAnnotator pieceId={piece.id} photoUrl={piece.photoUrl} points={markers} />
+        </div>
 
-      <div className="section-title">
-        <span>Points ({piece.points.length})</span>
-        <span className="line" />
+        <div className="piece-info-col">
+          <div className="section-title">
+            <span>Points ({piece.points.length})</span>
+            <span className="line" />
+          </div>
+
+          {piece.points.length === 0 && (
+            <p className="empty">Aucun point. Placez un point sur la photo, ou créez un point libre.</p>
+          )}
+
+          <PointsAccordion
+            items={piece.points.map((point) => ({
+              point: { id: point.id, num: point.num, x: point.x, y: point.y, icon: point.icon },
+              entries: point.entries as unknown as EntryData[],
+              links: linksByPoint.get(point.id) ?? [],
+            }))}
+            linkTargets={linkTargets}
+          />
+        </div>
       </div>
-
-      {piece.points.length === 0 && (
-        <p className="empty">Aucun point. Placez un point sur la photo, ou créez un point libre.</p>
-      )}
-
-      <PointsAccordion
-        items={piece.points.map((point) => ({
-          point: { id: point.id, num: point.num, x: point.x, y: point.y, icon: point.icon },
-          entries: point.entries as unknown as EntryData[],
-          links: linksByPoint.get(point.id) ?? [],
-        }))}
-        linkTargets={linkTargets}
-      />
 
       <LinkedJournalNotes entries={piece.linkedEntries as unknown as EntryData[]} />
 

@@ -382,6 +382,30 @@ label {
   color: var(--ok);
 }
 
+/* --- Fiche pièce : 2 colonnes sur ordinateur (photo à gauche, points à droite) --- */
+.piece-cols {
+  display: block; /* mobile : empilé */
+}
+@media (min-width: 900px) {
+  /* On élargit le conteneur uniquement pour la fiche pièce. */
+  .app:has(.piece-cols) {
+    max-width: 1100px;
+  }
+  .piece-cols {
+    display: grid;
+    grid-template-columns: minmax(0, 460px) minmax(0, 1fr);
+    gap: 24px;
+    align-items: start;
+  }
+  .piece-photo-col {
+    position: sticky;
+    top: 16px;
+  }
+  .piece-info-col .section-title:first-child {
+    margin-top: 0;
+  }
+}
+
 /* --- Photo annotator --- */
 /* Conteneur : permet à la bulle d'aperçu de déborder hors du cadre (le stage, lui,
    coupe au zoom via overflow:hidden). */
@@ -418,18 +442,19 @@ label {
   /* Contre-scale 1/zoom → taille écran constante = plus précis quand on zoome. */
   transform: translate(-50%, -50%) scale(var(--inv-scale, 1));
   transform-origin: center;
-  width: 30px;
-  height: 30px;
+  /* Pastille compacte par défaut (repère discret sur la photo). */
+  width: 22px;
+  height: 22px;
   border-radius: 50%;
   background: var(--accent);
   color: #fff;
-  border: 2px solid #fff;
+  border: 1.5px solid #fff;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 13px;
+  font-size: 11px;
   font-weight: 700;
-  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.5);
   will-change: transform;
 }
 .annotator .marker.shortcut {
@@ -439,23 +464,23 @@ label {
   line-height: 1;
 }
 .annotator .marker.has-icon .marker-glyph {
-  /* emoji : un peu plus grand, sans le décalage vertical par défaut */
-  font-size: 16px;
+  /* emoji : lisible sans déborder de la petite pastille */
+  font-size: 12px;
   font-weight: 400;
 }
 /* Numéro en petit badge d'angle quand une icône occupe la pastille. */
 .annotator .marker .marker-badge {
   position: absolute;
-  top: -6px;
-  right: -6px;
-  min-width: 15px;
-  height: 15px;
-  padding: 0 3px;
-  border-radius: 8px;
+  top: -5px;
+  right: -5px;
+  min-width: 13px;
+  height: 13px;
+  padding: 0 2px;
+  border-radius: 7px;
   background: #fff;
   color: #111;
   border: 1px solid rgba(0, 0, 0, 0.2);
-  font-size: 9px;
+  font-size: 8px;
   font-weight: 800;
   line-height: 1;
   display: flex;

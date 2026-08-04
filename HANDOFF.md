@@ -343,6 +343,10 @@ Teddy.
   s'affichent sur la fiche cible** (`LinkedJournalNotes` sur pièce /
   installation / logiciel) — lien visible dans les deux sens. `listJournalTargets`
   fournit les cibles groupées. Vérifié sur mobile.
+- **Fiche pièce en 2 colonnes sur ordinateur** (≥ 900 px) : photo à gauche
+  (sticky) + points à droite (`.piece-cols`, conteneur élargi via
+  `.app:has(.piece-cols)`) ; empilé sur mobile. **Pastilles plus compactes par
+  défaut** (22 px, badge/icône ajustés).
 - Software timeline, Journal (ajout rapide + lien pièce optionnel).
 - Partage public `/s/[shareToken]` (testé sans cookie).
 - Soft delete + corbeille (restaurer / purger, purge = suppression fichier disque).
